@@ -1,0 +1,9 @@
+#!/bin/bash -e
+
+echo "compiling to wasm module ..."
+cd ./workspace/wasm/
+wasm-pack build --dev --target web
+
+echo ""
+echo "copying generated module from pkg to docs/src/logic ..."
+cp -f ./pkg/package.json ./pkg/logic_core* ../../docs/src/logic_core

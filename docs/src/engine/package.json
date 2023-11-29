@@ -1,0 +1,19 @@
+{
+  "name": "voidchess_engine_wasm",
+  "description": "PoC of splitting Rust code to be compiled to wasm into workspaces",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/simon-void/wasm_from_rust_workspaces"
+  },
+  "files": [
+    "voidchess_engine_wasm_bg.wasm",
+    "voidchess_engine_wasm.js",
+    "voidchess_engine_wasm.d.ts"
+  ],
+  "module": "voidchess_engine_wasm.js",
+  "types": "voidchess_engine_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

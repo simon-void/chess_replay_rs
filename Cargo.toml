@@ -1,0 +1,21 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+resolver = "2"
+members = [
+    "workspace/logic_core",
+    "workspace/wasm",
+]
+
+[profile.release]
+# opt-level valid options are:
+#    0: no optimizations
+#    1: basic optimizations
+#    2: some optimizations
+#    3: all optimizations
+#    "s": optimize for binary size
+#    "z": optimize for binary size, but also turn off loop vectorization.
+opt-level = 3
+
+[profile.dev]
+incremental = true
