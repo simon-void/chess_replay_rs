@@ -6,4 +6,4 @@ wasm-pack build --no-default-features --release --target web
 
 echo ""
 echo "copying generated module from pkg to docs/src/logic ..."
-cp -f ./pkg/package.json ./pkg/logic_core* ../../docs/src/logic_core
+cp -f ./pkg/package.json ./pkg/chess_logic_wasm* ../../docs/src/chess_logic

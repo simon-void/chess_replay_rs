@@ -41,7 +41,7 @@ struct JsonResult {
 
 #[wasm_bindgen]
 pub fn decode_moves(base64_encoded: &str) -> JsValue {
-    let moves_result = match process_moves(base64_encoded) {
+    let moves_result = match decode_moves_base64(base64_encoded) {
         Ok(moves) => {
             JsonResult {
                 is_ok: true,
@@ -59,7 +59,7 @@ pub fn decode_moves(base64_encoded: &str) -> JsValue {
     JsValue::from_str(json.as_str())
 }
 
-fn process_moves(base64_encoded: &str) -> Result<String, String> {
+fn decode_moves_base64(base64_encoded: &str) -> Result<String, String> {
     let mut encoded_chars= base64_encoded.chars();
     let mut moves: Vec<String> = Vec::with_capacity(base64_encoded.len() * 2 + 4);
 
@@ -72,8 +72,9 @@ fn process_moves(base64_encoded: &str) -> Result<String, String> {
             None => {return Err(format!("encoded from-position without to-position"));}
             Some(pos) => {pos}
         };
-        let mut move_to_fill: String = String::with_capacity(2);
+        let mut move_to_fill: String = String::with_capacity(5);
         decode_base64_char(from_pos_enc, &mut move_to_fill)?;
+        move_to_fill.push('-');
         decode_base64_char(to_pos_enc, &mut move_to_fill)?;
 
         moves.push(move_to_fill);
@@ -266,12 +267,30 @@ pub fn get_fen(game_config: &str) -> JsValue {
 //
 //
 //
-// //------------------------------Tests------------------------
-//
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
+//------------------------------Tests------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::*;
+
+    #[rstest(
+    encoded, expected_decoded,
+    case("IY-tYgxhgp2upx92", "a2-a4,g8-f6,a4-a5,b7-b5,a5-b6,g7-g6,b6-b7,f8-g7"),
+    case("IY-tYgxhgp2upx92x4Q8_", "a2-a4,g8-f6,a4-a5,b7-b5,a5-b6,g7-g6,b6-b7,f8-g7,b7Qa8,e8-h8"),
+    ::trace //This leads to the arguments being printed in front of the test result.
+    )]
+    fn test_decode_moves_base64(encoded: &str, expected_decoded: &str) {
+        let actual_decoded = match decode_moves_base64(encoded) {
+            Ok(moves) => {moves}
+            Err(err) => {panic!("{}", err)}
+        };
+        assert_eq!(
+            actual_decoded,
+            expected_decoded,
+        );
+    }
+
 //     #[test]
 //     #[allow(non_snake_case)]
 //     fn test_serialize_deserialize_GameEvaluationResultMoveToPlay() {
@@ -311,4 +330,4 @@ pub fn get_fen(game_config: &str) -> JsValue {
 //             MoveEvaluation::Numeric(5.5),
 //         );
 //     }
-// }
+}

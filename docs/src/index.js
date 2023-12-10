@@ -1,4 +1,4 @@
-import init, * as wasm from './engine/voidchess_engine_wasm.js';
+import init, * as wasm from './chess_logic/chess_logic_wasm.js';
 import {Chessboard, INPUT_EVENT_TYPE, MOVE_INPUT_MODE} from "./cm-chessboard/Chessboard.js"
 
 // const states = {
