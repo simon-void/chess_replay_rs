@@ -46,12 +46,12 @@ pub fn for_reachable_moves(
             let is_king_side_castling_still_possible: bool;
             match game_state.turn_by {
                 Color::White => {
-                    is_queen_side_castling_still_possible = game_state.is_white_queen_side_castling_still_possible.get_value();
-                    is_king_side_castling_still_possible = game_state.is_white_king_side_castling_still_possible.get_value();
+                    is_queen_side_castling_still_possible = game_state.is_white_queen_side_castling_still_allowed.is_still_allowed();
+                    is_king_side_castling_still_possible = game_state.is_white_king_side_castling_still_allowed.is_still_allowed();
                 },
                 Color::Black => {
-                    is_queen_side_castling_still_possible = game_state.is_black_queen_side_castling_still_possible.get_value();
-                    is_king_side_castling_still_possible = game_state.is_black_king_side_castling_still_possible.get_value();
+                    is_queen_side_castling_still_possible = game_state.is_black_queen_side_castling_still_allowed.is_still_allowed();
+                    is_king_side_castling_still_possible = game_state.is_black_king_side_castling_still_allowed.is_still_allowed();
                 },
             }
             for_reachable_king_moves(

@@ -75,7 +75,7 @@ impl BoardStates {
             new_white_board_states_history,
             new_black_board_states_history,
         ) = {
-            if move_stats.did_move_pawn || move_stats.did_catch_figure {
+            if move_stats.did_move_pawn || move_stats.did_catch_figure() {
                 let mut new_white_board_states = tiny_vec!();
                 let mut new_black_board_states = tiny_vec!();
                 match turn_by {
@@ -145,7 +145,7 @@ impl BoardStates {
         );
         debug_assert!(
             {
-                if move_stats.did_catch_figure || move_stats.did_move_pawn {
+                if move_stats.did_catch_figure() || move_stats.did_move_pawn {
                     let white_states_count = new_white_board_states_history.len() as isize;
                     let black_states_count = new_black_board_states_history.len() as isize;
                     match turn_by {

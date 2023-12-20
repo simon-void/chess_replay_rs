@@ -41,27 +41,27 @@ impl fmt::Display for Color {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Deactivatable {
+pub struct Disallowable {
     value: bool,
 }
 
-impl Deactivatable {
-    pub fn new(value: bool) ->Deactivatable {
-        Deactivatable {
+impl Disallowable {
+    pub fn new(value: bool) -> Disallowable {
+        Disallowable {
             value,
         }
     }
 
-    pub fn deactivate(&mut self) {
+    pub fn disallow(&mut self) {
         self.value = false;
     }
 
-    pub fn get_value(&self) -> bool {
+    pub fn is_still_allowed(&self) -> bool {
         self.value
     }
 }
 
-impl fmt::Display for Deactivatable {
+impl fmt::Display for Disallowable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.value)
     }

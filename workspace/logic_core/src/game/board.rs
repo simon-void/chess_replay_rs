@@ -34,7 +34,7 @@ pub struct Board {
 impl Board {
     pub fn classic() -> Board {
         Board {
-            number_of_figures: 16,
+            number_of_figures: 32,
             state: [
                 Some(WHITE_QUEEN_SIDE_ROOK),
                 Some(WHITE_KNIGHT),
@@ -118,20 +118,15 @@ impl Board {
     /**
     * returns if a figure was caught/replaced on that position
     */
-    pub fn set_figure(&mut self, pos: Position, figure: Figure) -> bool {
-        // match opt_figure {
-        //     None => println!("clear figure on {}", pos),
-        //     Some(figure) => println!("set figure {} on {}", figure, pos),
-        // }
+    pub fn set_figure(&mut self, pos: Position, figure: Figure) -> Option<(Figure, Position)> {
         let old_content = self.state[pos.index];
         self.state[pos.index] = Some(figure);
 
-        if old_content.is_some() {
-            true
-        } else {
+        if old_content.is_none() {
             self.number_of_figures += 1;
-            false
-        }
+        };
+
+        old_content.map(|old_figure| (old_figure, pos))
     }
 
     pub fn clear_field(&mut self, pos: Position) {
@@ -343,5 +338,27 @@ mod tests {
         let game_state = game_config.parse::<GameState>().unwrap();
         let actual_fen_part1 = game_state.board.get_fen_part1();
         assert_eq!(actual_fen_part1, String::from(expected_fen_part1));
+    }
+
+    #[rstest(
+    game_config, expected_nr_of_figures,
+    case("e2-e4", 32),
+    case("e2-e4 d7-d5 e4-d5", 31), // capture
+    case("a2-a4 h7-h6 a4-a5 b7-b5 a5-b6", 31), // capture en passant
+    case("a2-a4 h7-h6 a4-a5 b7-b5 a5-b6 h6-h5 b6-b7 b8-c6 b7Qb8", 31), // pawn promotion without capture
+    case("a2-a4 h7-h6 a4-a5 b7-b5 a5-b6 h6-h5 b6-b7 b8-c6 b7Qa8", 30), // pawn promotion with capture
+    case("g2-g3 a7-a6 f1-g2 a6-a5 g1-f3 a5-a4 e1cg1", 32),             // short castling
+    case("d2-d3 a7-a6 c1-f4 a6-a5 d1-d2 a5-a4 b1-c3 a4-a3 e1Cc1", 32), // long castling
+    case("white ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", 6),
+    case("black ♖a1 ♔e1 ♚e8", 3),
+    ::trace //This leads to the arguments being printed in front of the test result.
+    )]
+    fn test_number_of_figures(
+        game_config: &str,
+        expected_nr_of_figures: isize,
+    ) {
+        let game_state = game_config.parse::<GameState>().unwrap();
+        let actual_nr_of_figures = game_state.board.number_of_figures;
+        assert_eq!(actual_nr_of_figures, expected_nr_of_figures);
     }
 }

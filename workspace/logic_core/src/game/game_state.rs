@@ -1,9 +1,10 @@
-use crate::base::{Color, Position, Move, MoveType, Moves, ChessError, ErrorKind, Direction, Deactivatable};
+use crate::base::{Color, Position, Move, MoveType, Moves, ChessError, ErrorKind, Direction, Disallowable};
 use crate::figure::{Figure, FigureType, FigureAndPosition};
 use crate::game::{Board};
 use crate::figure::functions::check_search::{is_king_in_check, is_king_in_check_after};
 use tinyvec::*;
 use std::{fmt,str};
+use crate::base::CastlingType::{KingSide, QueenSide};
 use crate::base::rc_list::{RcList};
 use crate::figure::functions::count_reachable::count_reachable_moves;
 use crate::figure::functions::checkmate::is_active_king_checkmate;
@@ -15,10 +16,10 @@ pub struct GameState {
     white_king_pos: Position,
     black_king_pos: Position,
     pub en_passant_intercept_pos: Option<Position>,
-    pub is_white_queen_side_castling_still_possible: Deactivatable,
-    pub is_white_king_side_castling_still_possible: Deactivatable,
-    pub is_black_queen_side_castling_still_possible: Deactivatable,
-    pub is_black_king_side_castling_still_possible: Deactivatable,
+    pub is_white_queen_side_castling_still_allowed: Disallowable,
+    pub is_white_king_side_castling_still_allowed: Disallowable,
+    pub is_black_queen_side_castling_still_allowed: Disallowable,
+    pub is_black_king_side_castling_still_allowed: Disallowable,
     moves_played: RcList<Move>,
 }
 
@@ -30,10 +31,10 @@ impl GameState {
             white_king_pos: "e1".parse::<Position>().ok().unwrap(),
             black_king_pos: "e8".parse::<Position>().ok().unwrap(),
             en_passant_intercept_pos: None,
-            is_white_queen_side_castling_still_possible: Deactivatable::new(true),
-            is_white_king_side_castling_still_possible: Deactivatable::new(true),
-            is_black_queen_side_castling_still_possible: Deactivatable::new(true),
-            is_black_king_side_castling_still_possible: Deactivatable::new(true),
+            is_white_queen_side_castling_still_allowed: Disallowable::new(true),
+            is_white_king_side_castling_still_allowed: Disallowable::new(true),
+            is_black_queen_side_castling_still_allowed: Disallowable::new(true),
+            is_black_king_side_castling_still_allowed: Disallowable::new(true),
             moves_played: RcList::new(),
         }
     }
@@ -50,7 +51,7 @@ impl GameState {
 
         for figure_and_pos in positioned_figures {
             let field_was_already_in_use = board.set_figure(figure_and_pos.pos, figure_and_pos.figure);
-            if field_was_already_in_use {
+            if field_was_already_in_use.is_some() {
                 return Err(ChessError{
                     msg: format!("multiple figures placed on {}", figure_and_pos.pos),
                     kind: ErrorKind::IllegalConfig
@@ -177,10 +178,10 @@ impl GameState {
         let is_black_king_side_rook_on_starting_pos = board_contains_rook_at(
             BLACK_KING_SIDE_ROOK_STARTING_POS, Color::Black, &board,
         );
-        let is_white_queen_side_castling_possible = Deactivatable::new(is_white_king_on_starting_pos && is_white_queen_side_rook_on_starting_pos);
-        let is_white_king_side_castling_possible = Deactivatable::new(is_white_king_on_starting_pos && is_white_king_side_rook_on_starting_pos);
-        let is_black_queen_side_castling_possible = Deactivatable::new(is_black_king_on_starting_pos && is_black_queen_side_rook_on_starting_pos);
-        let is_black_king_side_castling_possible = Deactivatable::new(is_black_king_on_starting_pos && is_black_king_side_rook_on_starting_pos);
+        let is_white_queen_side_castling_possible = Disallowable::new(is_white_king_on_starting_pos && is_white_queen_side_rook_on_starting_pos);
+        let is_white_king_side_castling_possible = Disallowable::new(is_white_king_on_starting_pos && is_white_king_side_rook_on_starting_pos);
+        let is_black_queen_side_castling_possible = Disallowable::new(is_black_king_on_starting_pos && is_black_queen_side_rook_on_starting_pos);
+        let is_black_king_side_castling_possible = Disallowable::new(is_black_king_on_starting_pos && is_black_king_side_rook_on_starting_pos);
 
         let game_state = GameState {
             board,
@@ -188,17 +189,30 @@ impl GameState {
             white_king_pos,
             black_king_pos,
             en_passant_intercept_pos,
-            is_white_queen_side_castling_still_possible: is_white_queen_side_castling_possible,
-            is_white_king_side_castling_still_possible: is_white_king_side_castling_possible,
-            is_black_queen_side_castling_still_possible: is_black_queen_side_castling_possible,
-            is_black_king_side_castling_still_possible: is_black_king_side_castling_possible,
+            is_white_queen_side_castling_still_allowed: is_white_queen_side_castling_possible,
+            is_white_king_side_castling_still_allowed: is_white_king_side_castling_possible,
+            is_black_queen_side_castling_still_allowed: is_black_queen_side_castling_possible,
+            is_black_king_side_castling_still_allowed: is_black_king_side_castling_possible,
             moves_played: RcList::new(),
         };
 
         Ok(game_state)
     }
 
-    pub fn do_move(&self, next_move: Move) -> (GameState, MoveStats) {
+    /**
+    * returns true if a_move.from points to a pawn and a_move.to is on the first or last row of the board
+    * (but doesn't check if the move is actually legal)
+    */
+    pub fn looks_like_pawn_promotion_move(&self, a_move: Move) -> bool {
+        let Some(Figure{fig_type: FigureType::Pawn, color: _}) = self.board.get_figure(a_move.from) else {
+            return false;
+        };
+        let pawn_to_row = a_move.to.row;
+        (pawn_to_row == 7) || (pawn_to_row == 0)
+    }
+
+    // TODO change return type to Result<(GameState, MoveStats), ChessError>
+    pub fn do_move(&self, mut next_move: Move) -> (GameState, MoveStats) {
         debug_assert!(
             next_move.to != self.white_king_pos && next_move.to != self.black_king_pos,
             "move {} would capture a king on game {}", next_move, self.board
@@ -215,23 +229,23 @@ impl GameState {
         let mut new_board = self.board.clone();
         let moving_figure: Figure = self.board.get_figure(next_move.from).unwrap();
 
-        let mut new_is_white_queen_side_castling_possible = self.is_white_queen_side_castling_still_possible;
-        let mut new_is_white_king_side_castling_possible = self.is_white_king_side_castling_still_possible;
-        let mut new_is_black_queen_side_castling_possible = self.is_black_queen_side_castling_still_possible;
-        let mut new_is_black_king_side_castling_possible = self.is_black_king_side_castling_still_possible;
+        let mut new_is_white_queen_side_castling_allowed = self.is_white_queen_side_castling_still_allowed;
+        let mut new_is_white_king_side_castling_allowed = self.is_white_king_side_castling_still_allowed;
+        let mut new_is_black_queen_side_castling_allowed = self.is_black_queen_side_castling_still_allowed;
+        let mut new_is_black_king_side_castling_allowed = self.is_black_king_side_castling_still_allowed;
 
         {
             if next_move.from == WHITE_QUEEN_SIDE_ROOK_STARTING_POS || next_move.to == WHITE_QUEEN_SIDE_ROOK_STARTING_POS {
-                new_is_white_queen_side_castling_possible.deactivate()
+                new_is_white_queen_side_castling_allowed.disallow()
             }
             if next_move.from == WHITE_KING_SIDE_ROOK_STARTING_POS || next_move.to == WHITE_KING_SIDE_ROOK_STARTING_POS {
-                new_is_white_king_side_castling_possible.deactivate()
+                new_is_white_king_side_castling_allowed.disallow()
             }
             if next_move.from == BLACK_QUEEN_SIDE_ROOK_STARTING_POS || next_move.to == BLACK_QUEEN_SIDE_ROOK_STARTING_POS {
-                new_is_black_queen_side_castling_possible.deactivate()
+                new_is_black_queen_side_castling_allowed.disallow()
             }
             if next_move.from == BLACK_KING_SIDE_ROOK_STARTING_POS || next_move.to == BLACK_KING_SIDE_ROOK_STARTING_POS {
-                new_is_black_king_side_castling_possible.deactivate()
+                new_is_black_king_side_castling_allowed.disallow()
             }
         }
 
@@ -242,35 +256,45 @@ impl GameState {
             move_stats,
         ) = match moving_figure.fig_type {
             FigureType::King => {
-                let figure_gets_caught = do_normal_move(&mut new_board, next_move);
-                let new_king_pos = next_move.to;
-                let is_castling = (next_move.from.column-next_move.to.column).abs() == 2;
-                if is_castling {
-                    update_rock_position_after_castling(&mut new_board, next_move);
-                }
-
-                let king_move_stats = MoveStats {
-                    did_catch_figure: figure_gets_caught,
-                    did_move_pawn: false,
+                let is_castling = match new_board.get_figure(next_move.to) {
+                    Some(Figure{fig_type: FigureType::Rook, color: rook_color }) => {
+                        rook_color == moving_figure.color
+                    }
+                    _ => false,
                 };
+
+                let (effective_king_move, figure_captured, castling_rook_move) = if is_castling {
+                    let (king_move, rook_move) = do_castling_move(&mut new_board, next_move, moving_figure.color);
+                    (king_move, None, Some(rook_move))
+                } else {
+                    let figure_captured = do_normal_move(&mut new_board, next_move);
+                    (next_move, figure_captured, None)
+                };
+
+                let king_move_stats = {
+                    let mut stats = MoveStats::new(effective_king_move, figure_captured);
+                    stats.castling_rook_move = castling_rook_move;
+                    stats
+                };
+
 
                 match moving_figure.color {
                     Color::White => {
-                        new_is_white_queen_side_castling_possible.deactivate();
-                        new_is_white_king_side_castling_possible.deactivate();
+                        new_is_white_queen_side_castling_allowed.disallow();
+                        new_is_white_king_side_castling_allowed.disallow();
                         (
-                            new_king_pos,
+                            effective_king_move.to,
                             self.black_king_pos,
                             None,
                             king_move_stats,
                         )
                     }
                     Color::Black => {
-                        new_is_black_queen_side_castling_possible.deactivate();
-                        new_is_black_king_side_castling_possible.deactivate();
+                        new_is_black_queen_side_castling_allowed.disallow();
+                        new_is_black_king_side_castling_allowed.disallow();
                         (
                             self.white_king_pos,
-                            new_king_pos,
+                            effective_king_move.to,
                             None,
                             king_move_stats,
                         )
@@ -300,54 +324,49 @@ impl GameState {
 
                 match compute_pawn_move_type(self, next_move) {
                     PawnMoveType::SingleStep => {
-                        let figure_gets_caught = do_normal_move(&mut new_board, next_move);
+                        let figure_captured = do_normal_move(&mut new_board, next_move);
                         handle_pawn_promotion_after_move(&mut new_board, next_move, self.turn_by);
+                        let mut stats = MoveStats::new(next_move, figure_captured);
+                        stats.did_move_pawn = true;
                         (
                             self.white_king_pos, self.black_king_pos,
                             None,
-                            MoveStats {
-                                did_catch_figure: figure_gets_caught,
-                                did_move_pawn: true,
-                            },
+                            stats,
                         )
                     },
                     PawnMoveType::DoubleStep => {
                         do_normal_move(&mut new_board, next_move);
+                        let mut stats = MoveStats::new(next_move, None);
+                        stats.did_move_pawn = true;
                         (
                             self.white_king_pos, self.black_king_pos,
                             Some(Position::new_unchecked(
                                 next_move.to.column,
                                 (next_move.from.row + next_move.to.row) / 2,
                             )),
-                            MoveStats {
-                                did_catch_figure: false,
-                                did_move_pawn: true,
-                            },
+                            stats,
                         )
                     },
                     PawnMoveType::EnPassantIntercept => {
-                        do_en_passant_move(&mut new_board, next_move);
+                        let pawn_captured = do_en_passant_move(&mut new_board, next_move);
+                        next_move.move_type = MoveType::EnPassant;
+                        let mut stats = MoveStats::new(next_move, Some(pawn_captured));
+                        stats.did_move_pawn = true;
                         (
                             self.white_king_pos, self.black_king_pos,
                             None,
-                            MoveStats {
-                                did_catch_figure: true,
-                                did_move_pawn: true,
-                            },
+                            stats,
                         )
                     },
                 }
             },
             _ => {
-                let figure_gets_caught = do_normal_move(&mut new_board, next_move);
+                let figure_captured = do_normal_move(&mut new_board, next_move);
                 (
                     self.white_king_pos,
                     self.black_king_pos,
                     None,
-                    MoveStats {
-                        did_catch_figure: figure_gets_caught,
-                        did_move_pawn: false,
-                    },
+                    MoveStats::new(next_move, figure_captured),
                 )
             },
         };
@@ -358,10 +377,10 @@ impl GameState {
             white_king_pos: new_white_king_pos,
             black_king_pos: new_black_king_pos,
             en_passant_intercept_pos: new_en_passant_intercept_pos,
-            is_white_queen_side_castling_still_possible: new_is_white_queen_side_castling_possible,
-            is_white_king_side_castling_still_possible: new_is_white_king_side_castling_possible,
-            is_black_queen_side_castling_still_possible: new_is_black_queen_side_castling_possible,
-            is_black_king_side_castling_still_possible: new_is_black_king_side_castling_possible,
+            is_white_queen_side_castling_still_allowed: new_is_white_queen_side_castling_allowed,
+            is_white_king_side_castling_still_allowed: new_is_white_king_side_castling_allowed,
+            is_black_queen_side_castling_still_allowed: new_is_black_queen_side_castling_allowed,
+            is_black_king_side_castling_still_allowed: new_is_black_king_side_castling_allowed,
             moves_played: self.moves_played.append_new(next_move),
         },
          move_stats,
@@ -467,10 +486,10 @@ impl GameState {
         fen_part1to4.push(' ');
         fen_part1to4.push(self.turn_by.get_fen_char());
         fen_part1to4.push(' ');
-        let white_king_castling = self.is_white_king_side_castling_still_possible.get_value();
-        let white_queen_castling = self.is_white_queen_side_castling_still_possible.get_value();
-        let black_king_castling = self.is_black_king_side_castling_still_possible.get_value();
-        let black_queen_castling = self.is_black_queen_side_castling_still_possible.get_value();
+        let white_king_castling = self.is_white_king_side_castling_still_allowed.is_still_allowed();
+        let white_queen_castling = self.is_white_queen_side_castling_still_allowed.is_still_allowed();
+        let black_king_castling = self.is_black_king_side_castling_still_allowed.is_still_allowed();
+        let black_queen_castling = self.is_black_queen_side_castling_still_allowed.is_still_allowed();
         if white_king_castling { fen_part1to4.push('K'); }
         if white_queen_castling { fen_part1to4.push('Q'); }
         if black_king_castling { fen_part1to4.push('k'); }
@@ -563,40 +582,64 @@ fn game_by_figures_on_board(mut token_iter: str::Split<char>) -> Result<GameStat
 }
 
 /**
-* returns if a figure gets caught by this move.
+* returns the figure that was caught (if any) and the position it was caught on
 */
 fn do_normal_move(
     new_board: &mut Board,
     next_move: Move,
-) -> bool {
+) -> Option<(Figure, Position)> {
     let moving_figure: Figure = new_board.get_figure(next_move.from).expect("field the figure moves from is empty");
     new_board.clear_field(next_move.from);
     new_board.set_figure(next_move.to, moving_figure)
 }
 
-fn update_rock_position_after_castling(
+/**
+* this function assumes that the king move given this function actually moves to the position of the rook
+* (this makes castling moves distinguishable from normal king moves in all initial positions of chess960,
+* e.g. think of initial position with king on f1 and rook on h1: would move f1-g1 come with intend to castle or not?)
+* returns the effective move of king and rook
+* e.g. giving classic initial position, then king_move: e1-h1 would return (e1-g1, h1-f1)
+*/
+fn do_castling_move(
     new_board: &mut Board,
-    next_move: Move,
-) {
-    let castling_row = next_move.to.row;
-    let (rook_from, rook_to) = if next_move.to.column == 6 {
-        (Position::new_unchecked(7, castling_row), Position::new_unchecked(5, castling_row))
+    king_move: Move,
+    king_color: Color,
+) -> (Move, Move) {
+    new_board.clear_field(king_move.from);
+    new_board.clear_field(king_move.to);
+    let move_row = king_move.to.row;
+    let castling_type = if king_move.to.column > king_move.from.column {
+        KingSide
     } else {
-        (Position::new_unchecked(0, castling_row), Position::new_unchecked(3, castling_row))
+        QueenSide
     };
-    new_board.clear_field(rook_from);
-    let rook_color = if castling_row == 0 {Color::White} else {Color::Black};
-    new_board.set_figure(rook_to, Figure{ fig_type: FigureType::Rook, color: rook_color });
+    let (king_to_pos, rook_to_pos) = if castling_type== KingSide {
+        let rook_to_pos = Position::new_unchecked(5, move_row);
+        let king_to_pos = Position::new_unchecked(6, move_row);
+        new_board.set_figure(king_to_pos, Figure{ fig_type: FigureType::King, color: king_color });
+        new_board.set_figure(rook_to_pos, Figure{ fig_type: FigureType::Rook, color: king_color });
+        (king_to_pos, rook_to_pos)
+    } else {
+        let rook_to_pos = Position::new_unchecked(3, move_row);
+        let king_to_pos = Position::new_unchecked(2, move_row);
+        new_board.set_figure(king_to_pos, Figure{ fig_type: FigureType::King, color: king_color });
+        new_board.set_figure(rook_to_pos, Figure{ fig_type: FigureType::Rook, color: king_color });
+        (king_to_pos, rook_to_pos)
+    };
+
+    (Move::new_castling(king_move.from, king_to_pos, castling_type), Move::new(king_move.to, rook_to_pos))
 }
 
 fn do_en_passant_move(
     new_board: &mut Board,
     next_move: Move,
-) {
+) -> (Figure, Position) {
     do_normal_move(new_board, next_move);
     let double_stepped_pawn_pos =
         Position::new_unchecked(next_move.to.column, next_move.from.row);
-    new_board.clear_field(double_stepped_pawn_pos)
+    let pawn_captured = new_board.get_figure(double_stepped_pawn_pos).unwrap();
+    new_board.clear_field(double_stepped_pawn_pos);
+    (pawn_captured, double_stepped_pawn_pos)
 }
 
 enum PawnMoveType {
@@ -612,8 +655,30 @@ impl fmt::Display for GameState {
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct MoveStats {
-    pub did_catch_figure: bool,
+    pub main_move: Move,
+    pub figure_captured: Option<(Figure, Position)>,
+    pub castling_rook_move: Option<Move>,
+    pub pawn_promotion: Option<Figure>,
     pub did_move_pawn: bool,
+}
+
+impl MoveStats {
+    pub fn new(
+        main_move: Move,
+        figure_caught: Option<(Figure, Position)>,
+    ) -> MoveStats {
+        MoveStats {
+            main_move,
+            figure_captured: figure_caught,
+            castling_rook_move: None,
+            pawn_promotion: None,
+            did_move_pawn: false,
+        }
+    }
+
+    pub fn did_catch_figure(&self) -> bool {
+        self.figure_captured.is_some()
+    }
 }
 
 pub static WHITE_KING_STARTING_POS: Position = Position::new_unchecked(4, 0);
@@ -649,10 +714,10 @@ mod tests {
                 white_king_pos: self.black_king_pos.toggle_row(),
                 black_king_pos: self.white_king_pos.toggle_row(),
                 en_passant_intercept_pos: self.en_passant_intercept_pos.map(|pos|{pos.toggle_row()}),
-                is_white_queen_side_castling_still_possible: self.is_black_queen_side_castling_still_possible,
-                is_white_king_side_castling_still_possible: self.is_black_king_side_castling_still_possible,
-                is_black_queen_side_castling_still_possible: self.is_white_queen_side_castling_still_possible,
-                is_black_king_side_castling_still_possible: self.is_white_king_side_castling_still_possible,
+                is_white_queen_side_castling_still_allowed: self.is_black_queen_side_castling_still_allowed,
+                is_white_king_side_castling_still_allowed: self.is_black_king_side_castling_still_allowed,
+                is_black_queen_side_castling_still_allowed: self.is_white_queen_side_castling_still_allowed,
+                is_black_king_side_castling_still_allowed: self.is_white_king_side_castling_still_allowed,
                 moves_played: self.moves_played.toggle_rows(),
             }
         }
@@ -712,12 +777,12 @@ mod tests {
         let game_state = game_config_testing.parse::<GameState>().unwrap();
         let white_move = next_move_str.parse::<Move>().unwrap();
         let ( _, move_stats) = game_state.do_move(white_move);
-        assert_eq!(move_stats.did_catch_figure, expected_catches_figure, "white catches figure");
+        assert_eq!(move_stats.did_catch_figure(), expected_catches_figure, "white catches figure");
 
 
         let toggled_game_state = game_state.toggle_colors();
         let ( _, move_stats) = toggled_game_state.do_move(white_move.toggle_rows());
-        assert_eq!(move_stats.did_catch_figure, expected_catches_figure, "black catches figure");
+        assert_eq!(move_stats.did_catch_figure(), expected_catches_figure, "black catches figure");
     }
 
     #[test]

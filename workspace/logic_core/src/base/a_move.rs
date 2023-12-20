@@ -30,6 +30,22 @@ impl Move {
         }
     }
 
+    pub fn new_en_passant(from: Position, to: Position) -> Move {
+        Move {
+            from,
+            to,
+            move_type: MoveType::EnPassant,
+        }
+    }
+
+    pub fn new_castling(from: Position, to: Position, castling_type: CastlingType) -> Move {
+        Move {
+            from,
+            to,
+            move_type: MoveType::Castling(castling_type),
+        }
+    }
+
     pub fn from_code(code: &str) -> Move {
         code.parse::<Move>().unwrap_or_else(|_| panic!("illegal Move code: {}", code))
     }
@@ -141,11 +157,8 @@ impl str::FromStr for MoveType {
             "R" => Ok(MoveType::PawnPromotion(PromotionType::Rook)),
             "K" => Ok(MoveType::PawnPromotion(PromotionType::Knight)),
             "B" => Ok(MoveType::PawnPromotion(PromotionType::Bishop)),
-            "e" => Ok(MoveType::EnPassant),
-            "c" => Ok(MoveType::Castling(CastlingType::KingSide)),
-            "C" => Ok(MoveType::Castling(CastlingType::QueenSide)),
             _ => Err(ChessError{
-                msg: format!("unknown pawn promotion type: {}. Only QRKB are allowed.", s),
+                msg: format!("unknown move type: {}. Only '-QRKB' are allowed.", s),
                 kind: ErrorKind::IllegalFormat
             }),
         }
