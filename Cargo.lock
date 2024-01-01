@@ -179,6 +179,7 @@ name = "logic_core"
 version = "0.0.1"
 dependencies = [
  "rstest",
+ "serde",
  "tinyvec",
 ]
 

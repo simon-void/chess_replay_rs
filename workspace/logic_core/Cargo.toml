@@ -11,6 +11,7 @@ edition = "2021"
 
 [dependencies]
 tinyvec  = { version = "1.6.0", features = ["alloc"] }
+serde = { version = "1.0.193", features = ["derive"] }
 
 [dev-dependencies]
 rstest = "0.18.2"

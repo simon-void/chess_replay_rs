@@ -3,9 +3,10 @@ pub mod functions;
 use std::fmt;
 use crate::base::*;
 use std::str;
+use serde::Serialize;
 use crate::game::GameState;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 pub struct Figure {
     pub fig_type: FigureType,
     pub color: Color,
@@ -88,7 +89,7 @@ impl str::FromStr for FigureAndPosition {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 pub enum FigureType {
     Pawn,
     Rook,

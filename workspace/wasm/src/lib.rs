@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use logic_core::*;
-use logic_core::base::Move;
+use logic_core::base::{ChessError, Move};
 use logic_core::game::{GameState, MoveStats};
 
 pub use crate::figure::functions::allowed::get_allowed_moves;
@@ -45,9 +45,10 @@ struct JsonResult {
 pub fn decode_moves(base64_encoded: &str) -> JsValue {
     let moves_result = match decode_moves_base64(base64_encoded) {
         Ok(moves) => {
+            let move_stats_json = serde_json::to_string(&moves).unwrap();
             JsonResult {
                 is_ok: true,
-                value: moves,
+                value: move_stats_json,
             }
         }
         Err(err) => {
@@ -67,7 +68,7 @@ fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<MoveStats>, String> {
     let mut game_state = GameState::classic();
 
     loop {
-        let next_move_str = {
+        let mut next_move_str = {
             let from_pos_enc: char = match encoded_chars.next() {
                 None => { break; }
                 Some(pos) => { pos }
@@ -83,11 +84,16 @@ fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<MoveStats>, String> {
             move_to_fill
         };
 
-        let mut next_move = next_move_str.parse::<Move>().unwrap()?;
+        let chess_error_to_string = |chess_error: ChessError| {
+            format!("{chess_error}")
+        };
+
+        let mut next_move = next_move_str.parse::<Move>().map_err(chess_error_to_string)?;
         if game_state.looks_like_pawn_promotion_move(next_move) {
             if let Some(promotion_char) = encoded_chars.next() {
-                next_move_str[2] = promotion_char;
-                next_move = next_move_str.parse::<Move>().unwrap()?;
+                // replace the '-' of next_move_str with the promotion char
+                let _ = next_move_str.replace_range(2..3, promotion_char.to_string().as_str());
+                next_move = next_move_str.parse::<Move>().map_err(chess_error_to_string)?;
             }
         }
         let new_game_and_stats = game_state.do_move(next_move);

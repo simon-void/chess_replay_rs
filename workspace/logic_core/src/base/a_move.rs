@@ -6,6 +6,7 @@ use crate::base::{ChessError, ErrorKind};
 use tinyvec::alloc::fmt::Formatter;
 use crate::figure::FigureType;
 use std::hash::{Hash, Hasher};
+use serde::Serialize;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Move {
@@ -91,6 +92,13 @@ impl Default for Move {
             to: Position::new_unchecked(6, 5),
             move_type: MoveType::PawnPromotion(PromotionType::Bishop)
         }
+    }
+}
+
+impl Serialize for Move {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error> where
+        S: serde::Serializer {
+        serializer.serialize_str(&format!("{}", self))
     }
 }
 

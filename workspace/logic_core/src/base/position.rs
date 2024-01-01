@@ -2,6 +2,7 @@ use std::fmt;
 use std::iter::{Iterator};
 use std::ops::Range;
 use std::str;
+use serde::Serialize;
 use crate::base::{Color, ChessError, ErrorKind};
 use crate::game::{Board, FieldContent, USIZE_RANGE_063};
 use tinyvec::alloc::fmt::Formatter;
@@ -272,6 +273,13 @@ impl fmt::Display for Position {
 impl fmt::Debug for Position {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+impl Serialize for Position {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error> where
+        S: serde::Serializer {
+        serializer.serialize_str(&format!("{}", self))
     }
 }
 

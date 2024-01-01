@@ -4,6 +4,7 @@ use crate::game::{Board};
 use crate::figure::functions::check_search::{is_king_in_check, is_king_in_check_after};
 use tinyvec::*;
 use std::{fmt,str};
+use serde::Serialize;
 use crate::base::CastlingType::{KingSide, QueenSide};
 use crate::base::rc_list::{RcList};
 use crate::figure::functions::count_reachable::count_reachable_moves;
@@ -653,7 +654,7 @@ impl fmt::Display for GameState {
     }
 }
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default, Serialize)]
 pub struct MoveStats {
     pub main_move: Move,
     pub figure_captured: Option<(Figure, Position)>,

@@ -9,8 +9,9 @@ pub use errors::*;
 pub use position::*;
 pub use direction::*;
 use std::fmt;
+use serde::Serialize;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 pub enum Color {
     Black, White,
 }
