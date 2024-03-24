@@ -9,7 +9,7 @@ use tinyvec::ArrayVec;
  * it's assumed that the passive king isn't in check at this point (because then the game should already by over).
  * this also means that the king
  */
-pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_state: &GameState, after_move: Move) -> bool {
+pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_state: &GameState, after_move: FromTo) -> bool {
     let attack_situation = get_attack_situation(king_pos, king_color, game_state, after_move);
 
     match attack_situation {
@@ -19,7 +19,7 @@ pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_stat
     }
 }
 
-fn get_attack_situation(king_pos: Position, king_color: Color, game_state: &GameState, after_move: Move) -> AttackerNumber {
+fn get_attack_situation(king_pos: Position, king_color: Color, game_state: &GameState, after_move: FromTo) -> AttackerNumber {
     match after_move.move_type {
         MoveType::Castling(castling_type) => {
             let rock_row = if game_state.turn_by==Color::White {
@@ -353,7 +353,7 @@ mod tests {
         expected_is_mate: bool,
     ) {
         // pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_state: &GameState, after_move: Move) -> bool {
-        let latest_move = move_config.parse::<Move>().unwrap();
+        let latest_move = move_config.parse::<FromTo>().unwrap();
         let (game_state, _) = game_state_config.parse::<GameState>().unwrap().do_move(latest_move);
         let king_pos = game_state.get_active_king();
         let color = game_state.turn_by;
@@ -391,7 +391,7 @@ mod tests {
         expected_attack_situation: AttackerNumber,
     ) {
         // pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_state: &GameState, after_move: Move) -> bool {
-        let latest_move = move_config.parse::<Move>().unwrap();
+        let latest_move = move_config.parse::<FromTo>().unwrap();
         let (game_state, _) = game_state_config.parse::<GameState>().unwrap().do_move(latest_move);
         let king_pos = game_state.get_active_king();
         let color = game_state.turn_by;

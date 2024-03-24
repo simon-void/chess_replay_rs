@@ -115,12 +115,12 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
 #[cfg(test)]
 mod test {
-    use crate::base::Move;
+    use crate::base::FromTo;
     use super::RcList;
 
-    impl RcList<Move> {
-        pub fn toggle_rows(&self) -> RcList<Move> {
-            let mut moves: Vec<&Move> = self.reverse_iter().collect();
+    impl RcList<FromTo> {
+        pub fn toggle_rows(&self) -> RcList<FromTo> {
+            let mut moves: Vec<&FromTo> = self.reverse_iter().collect();
             moves.reverse();
 
             moves.iter_mut().fold(
@@ -162,16 +162,16 @@ mod test {
     #[test]
     fn test_toggle_rows() {
         let list = RcList::new();
-        let list1 = list.append_new("a1-h8".parse::<Move>().unwrap());
-        let list2 = list1.append_new("b1-b2".parse::<Move>().unwrap());
-        let list3 = list2.append_new("c8-c1".parse::<Move>().unwrap());
+        let list1 = list.append_new("a1-h8".parse::<FromTo>().unwrap());
+        let list2 = list1.append_new("b1-b2".parse::<FromTo>().unwrap());
+        let list3 = list2.append_new("c8-c1".parse::<FromTo>().unwrap());
 
         let toggled_list = list3.toggle_rows();
         let mut reverse_iter = toggled_list.reverse_iter();
 
-        assert_eq!(*reverse_iter.next().unwrap(), "c1-c8".parse::<Move>().unwrap());
-        assert_eq!(*reverse_iter.next().unwrap(), "b8-b7".parse::<Move>().unwrap());
-        assert_eq!(*reverse_iter.next().unwrap(), "a8-h1".parse::<Move>().unwrap());
+        assert_eq!(*reverse_iter.next().unwrap(), "c1-c8".parse::<FromTo>().unwrap());
+        assert_eq!(*reverse_iter.next().unwrap(), "b8-b7".parse::<FromTo>().unwrap());
+        assert_eq!(*reverse_iter.next().unwrap(), "a8-h1".parse::<FromTo>().unwrap());
         assert!(reverse_iter.next().is_none());
     }
 

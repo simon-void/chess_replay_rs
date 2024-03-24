@@ -7,95 +7,121 @@ use tinyvec::alloc::fmt::Formatter;
 use crate::figure::FigureType;
 use std::hash::{Hash, Hasher};
 use serde::Serialize;
+use crate::base::MoveType::{Castling, EnPassant, Normal, PawnPromotion};
+
+
+#[derive(Debug, Copy, Clone, Default, Serialize)]
+pub struct Move {
+    pub main_move: FromTo,
+    // figure_captured and is_pawn_move are not as useful as normally for a chess engine
+    // but still nice to have for 3-fold repetition computation
+    pub figure_captured: Option<FigureType>,
+    pub is_pawn_move: bool,
+    pub move_type: MoveType, // TODO: make this a Box<MoveType> or Rc<MoveType> together with a static lifetime instance of Rc/Box<MoveType::Normal>
+}
+
+impl Move {
+    pub fn new(
+        main_move: FromTo,
+        figure_caught: Option<FigureType>,
+    ) -> Move {
+        Move {
+            main_move,
+            figure_captured: figure_caught,
+            is_pawn_move: false,
+            move_type: Normal
+        }
+    }
+
+    pub fn new_en_passant(main_move: FromTo) -> Move {
+        Move {
+            main_move,
+            figure_captured: Some(FigureType::Pawn),
+            is_pawn_move: true,
+            move_type: EnPassant,
+        }
+    }
+
+    pub fn new_castling(king_from: Position, rook_from: Position) -> Move {
+        let king_to: Position = "".parse().unwrap();
+        let rook_to: Position = "".parse().unwrap();
+        let castling_type: CastlingType = CastlingType::KingSide;
+        Move {
+            main_move: FromTo::new(king_from, king_to),
+            figure_captured: None,
+            is_pawn_move: false,
+            move_type: MoveType::Castling(castling_type, FromTo::new(rook_from, rook_to)),
+        }
+    }
+}
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct Move {
+pub struct FromTo {
     pub from: Position,
     pub to: Position,
-    pub move_type: MoveType,
 }
 
 #[allow(clippy::derive_hash_xor_eq)]
-impl Hash for Move {
+impl Hash for FromTo {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_usize((self.from.index<< 6) + self.to.index);
     }
 }
 
-impl Move {
-    pub fn new(from: Position, to: Position) -> Move {
-        Move {
+impl FromTo {
+    pub fn new(from: Position, to: Position) -> FromTo {
+        FromTo {
             from,
             to,
-            move_type: MoveType::Normal,
         }
     }
 
-    pub fn new_en_passant(from: Position, to: Position) -> Move {
-        Move {
-            from,
-            to,
-            move_type: MoveType::EnPassant,
-        }
+    pub fn from_code(code: &str) -> FromTo {
+        code.parse::<FromTo>().unwrap_or_else(|_| panic!("illegal Move code: {}", code))
     }
 
-    pub fn new_castling(from: Position, to: Position, castling_type: CastlingType) -> Move {
-        Move {
-            from,
-            to,
-            move_type: MoveType::Castling(castling_type),
-        }
-    }
-
-    pub fn from_code(code: &str) -> Move {
-        code.parse::<Move>().unwrap_or_else(|_| panic!("illegal Move code: {}", code))
-    }
-
-    pub fn toggle_rows(&self) -> Move {
-        Move {
+    pub fn toggle_rows(&self) -> FromTo {
+        FromTo {
             from: self.from.toggle_row(),
             to: self.to.toggle_row(),
-            move_type: self.move_type,
         }
     }
 }
 
-impl str::FromStr for Move {
+impl str::FromStr for FromTo {
     type Err = ChessError;
 
     fn from_str(code: &str) -> Result<Self, Self::Err> {
-        Ok(Move {
+        Ok(FromTo {
             from: code[0..2].parse::<Position>()?,
-            move_type: code[2..3].parse::<MoveType>()?,
             to: code[3..5].parse::<Position>()?,
         })
     }
 }
 
-impl fmt::Display for Move {
+impl fmt::Display for FromTo {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}{}", self.from, self.move_type, self.to)
+        write!(f, "{}{}", self.from, self.to)
     }
 }
 
-impl fmt::Debug for Move {
+impl fmt::Debug for FromTo {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
 // Default is needed, so that Move can be stored in a TinyVec
-impl Default for Move {
+impl Default for FromTo {
     fn default() -> Self {
-        Move {
+        FromTo {
             from: Position::new_unchecked(1, 2),
             to: Position::new_unchecked(6, 5),
-            move_type: MoveType::PawnPromotion(PromotionType::Bishop)
         }
     }
 }
 
-impl Serialize for Move {
+impl Serialize for FromTo {
     fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error> where
         S: serde::Serializer {
         serializer.serialize_str(&format!("{}", self))
@@ -106,11 +132,11 @@ pub const EXPECTED_MAX_NUMBER_OF_MOVES: usize = 80;
 
 #[derive(Clone)]
 pub struct MoveArray {
-    array: [Move; EXPECTED_MAX_NUMBER_OF_MOVES]
+    array: [FromTo; EXPECTED_MAX_NUMBER_OF_MOVES]
 }
 
 impl tinyvec::Array for MoveArray {
-    type Item = Move;
+    type Item = FromTo;
     const CAPACITY: usize = EXPECTED_MAX_NUMBER_OF_MOVES;
 
     fn as_slice(&self) -> &[Self::Item] {
@@ -123,7 +149,7 @@ impl tinyvec::Array for MoveArray {
 
     fn default() -> Self {
         MoveArray {
-            array: [Move::default(); EXPECTED_MAX_NUMBER_OF_MOVES]
+            array: [FromTo::default(); EXPECTED_MAX_NUMBER_OF_MOVES]
         }
     }
 }
@@ -149,6 +175,23 @@ impl PromotionType {
     }
 }
 
+impl str::FromStr for PromotionType {
+    type Err = ChessError;
+
+    fn from_str(s: &str) -> Result<PromotionType, Self::Err> {
+        match s {
+            "Q" => Ok(PromotionType::Queen),
+            "R" => Ok(PromotionType::Rook),
+            "K" => Ok(PromotionType::Knight),
+            "B" => Ok(PromotionType::Bishop),
+            _ => Err(ChessError{
+                msg: format!("unknown pawn promotion type: {}. Only 'QRKB' are allowed.", s),
+                kind: ErrorKind::IllegalFormat
+            }),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CastlingType {
     KingSide,
@@ -160,11 +203,11 @@ impl str::FromStr for MoveType {
 
     fn from_str(s: &str) -> Result<MoveType, Self::Err> {
         match s {
-            "-" => Ok(MoveType::Normal),
-            "Q" => Ok(MoveType::PawnPromotion(PromotionType::Queen)),
-            "R" => Ok(MoveType::PawnPromotion(PromotionType::Rook)),
-            "K" => Ok(MoveType::PawnPromotion(PromotionType::Knight)),
-            "B" => Ok(MoveType::PawnPromotion(PromotionType::Bishop)),
+            "-" => Ok(Normal),
+            "Q" => Ok(PawnPromotion(PromotionType::Queen)),
+            "R" => Ok(PawnPromotion(PromotionType::Rook)),
+            "K" => Ok(PawnPromotion(PromotionType::Knight)),
+            "B" => Ok(PawnPromotion(PromotionType::Bishop)),
             _ => Err(ChessError{
                 msg: format!("unknown move type: {}. Only '-QRKB' are allowed.", s),
                 kind: ErrorKind::IllegalFormat
@@ -176,14 +219,14 @@ impl str::FromStr for MoveType {
 impl fmt::Display for MoveType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let code = match self {
-            MoveType::Normal => "-",
-            MoveType::PawnPromotion(PromotionType::Queen) => "Q",
-            MoveType::PawnPromotion(PromotionType::Rook) => "R",
-            MoveType::PawnPromotion(PromotionType::Knight) => "K",
-            MoveType::PawnPromotion(PromotionType::Bishop) => "B",
-            MoveType::EnPassant => "e",
-            MoveType::Castling(CastlingType::KingSide) => "c",
-            MoveType::Castling(CastlingType::QueenSide) => "C",
+            Normal => "-",
+            PawnPromotion(PromotionType::Queen) => "Q",
+            PawnPromotion(PromotionType::Rook) => "R",
+            PawnPromotion(PromotionType::Knight) => "K",
+            PawnPromotion(PromotionType::Bishop) => "B",
+            EnPassant => "e",
+            Castling(CastlingType::KingSide, _) => "c",
+            Castling(CastlingType::QueenSide, _) => "C",
         };
         write!(f, "{}", code)
     }
@@ -194,5 +237,5 @@ pub enum MoveType {
     Normal,
     PawnPromotion(PromotionType),
     EnPassant,
-    Castling(CastlingType)
+    Castling(CastlingType, /*rookMove:*/FromTo) // TODO: is CastlingType needed?
 }

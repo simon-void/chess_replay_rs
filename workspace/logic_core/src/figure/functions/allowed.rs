@@ -1,8 +1,8 @@
-use crate::base::{Move, MoveType, PromotionType};
+use crate::base::{FromTo, MoveType, PromotionType};
 use crate::game::{Game, MoveResult, StoppedReason};
 
-pub fn get_allowed_moves(game_config: &str) -> Vec<Move> {
-    let mut movable_moves: Vec<Move> = vec!();
+pub fn get_allowed_moves(game_config: &str) -> Vec<FromTo> {
+    let mut movable_moves: Vec<FromTo> = vec!();
     let game = match game_config.parse::<Game>() {
         Err(_) => {
             return movable_moves;
@@ -27,7 +27,7 @@ pub fn get_allowed_moves(game_config: &str) -> Vec<Move> {
     movable_moves
 }
 
-fn is_not_bound(game: &Game, a_move: Move) -> bool {
+fn is_not_bound(game: &Game, a_move: FromTo) -> bool {
     match game.play(a_move) {
         MoveResult::Ongoing(_, _) => {true}
         MoveResult::Stopped(reason, _) => {
@@ -78,7 +78,7 @@ mod tests {
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_get_allowed_moves_contains(game_config: &str, expected_move_str: &str) {
-        let expected_move = expected_move_str.parse::<Move>().unwrap();
+        let expected_move = expected_move_str.parse::<FromTo>().unwrap();
         let moves = get_allowed_moves(game_config);
         let actual_contains = moves.contains(&expected_move);
         if !actual_contains {
@@ -98,7 +98,7 @@ mod tests {
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_get_allowed_moves_doesnt_contain(game_config: &str, unexpected_move_str: &str) {
-        let unexpected_move = unexpected_move_str.parse::<Move>().unwrap();
+        let unexpected_move = unexpected_move_str.parse::<FromTo>().unwrap();
         let moves = get_allowed_moves(game_config);
         let actual_contains = moves.contains(&unexpected_move);
         if actual_contains {

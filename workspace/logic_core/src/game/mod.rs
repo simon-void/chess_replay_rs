@@ -4,14 +4,14 @@ mod board_state;
 
 pub use crate::game::game_state::*;
 pub use crate::game::board::*;
-use crate::base::{Moves, ChessError, ErrorKind, Move, Position};
+use crate::base::{Moves, ChessError, ErrorKind, FromTo, Position};
 use std::{str, fmt};
 use crate::game::board_state::{BoardStates};
 
 #[derive(Clone, Debug)]
 pub struct Game {
     latest_state: GameState,
-    latest_move: Option<Move>,
+    latest_move: Option<FromTo>,
     reachable_moves: Moves,
     board_states: BoardStates,
     half_moves_played: usize,
@@ -40,7 +40,7 @@ impl Game {
         }
     }
 
-    pub fn play(&self, a_move: Move) -> MoveResult {
+    pub fn play(&self, a_move: FromTo) -> MoveResult {
         let (new_game_state, move_stats) = self.latest_state.do_move(a_move);
 
         let reachable_moves = match verify_game_state(&new_game_state) {
@@ -148,7 +148,7 @@ fn game_by_figures_on_board(trimmed_game_config: &str) -> Result<Game, ChessErro
 fn game_by_moves_from_start(token_iter: str::Split<char>) -> Result<Game, ChessError> {
     let mut game = Game::classic();
     for token in token_iter {
-        let a_move = token.parse::<Move>()?;
+        let a_move = token.parse::<FromTo>()?;
         let move_result = game.play(a_move);
         match move_result {
             MoveResult::Ongoing(new_game, _) => {
@@ -230,7 +230,7 @@ mod tests {
         }
 
         let game = game_config_testing_white.parse::<Game>().unwrap();
-        let next_move = next_move_str.parse::<Move>().unwrap();
+        let next_move = next_move_str.parse::<FromTo>().unwrap();
         let move_result = game.play(next_move);
         assert_eq!(is_insufficient_material(move_result), expected_is_insufficient_material);
     }

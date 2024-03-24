@@ -7,8 +7,8 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use logic_core::*;
-use logic_core::base::{ChessError, Move};
-use logic_core::game::{GameState, MoveStats};
+use logic_core::base::{ChessError, FromTo, Move, PromotionType};
+use logic_core::game::{GameState};
 
 pub use crate::figure::functions::allowed::get_allowed_moves;
 pub use crate::game::Game;
@@ -62,9 +62,9 @@ pub fn decode_moves(base64_encoded: &str) -> JsValue {
     JsValue::from_str(json.as_str())
 }
 
-fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<MoveStats>, String> {
+fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<Move>, String> {
     let mut encoded_chars= base64_encoded.chars();
-    let mut move_stats: Vec<MoveStats> = Vec::with_capacity(base64_encoded.len() * 2 + 4);
+    let mut move_stats: Vec<Move> = Vec::with_capacity(base64_encoded.len() * 2 + 4);
     let mut game_state = GameState::classic();
 
     loop {
@@ -88,15 +88,12 @@ fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<MoveStats>, String> {
             format!("{chess_error}")
         };
 
-        let mut next_move = next_move_str.parse::<Move>().map_err(chess_error_to_string)?;
-        if game_state.looks_like_pawn_promotion_move(next_move) {
-            if let Some(promotion_char) = encoded_chars.next() {
-                // replace the '-' of next_move_str with the promotion char
-                let _ = next_move_str.replace_range(2..3, promotion_char.to_string().as_str());
-                next_move = next_move_str.parse::<Move>().map_err(chess_error_to_string)?;
-            }
-        }
-        let new_game_and_stats = game_state.do_move(next_move);
+        let next_move = next_move_str.parse::<FromTo>().map_err(chess_error_to_string)?;
+        let pawn_promotion: Option<PromotionType> = if game_state.looks_like_pawn_promotion_move(next_move) {
+            let next_char = encoded_chars.next().expect("missing pawn promotion character");
+            next_char.parse::<PromotionType>().map_err(chess_error_to_string)?;
+        } else { None };
+        let new_game_and_stats = game_state.do_move(next_move, pawn_promotion);
         game_state = new_game_and_stats.0;
         move_stats.push(new_game_and_stats.1);
     }
@@ -297,15 +294,18 @@ mod tests {
 
     #[rstest(
     encoded, expected_decoded,
-    case("IY-tYgxhgp2upx92", "a2-a4,g8-f6,a4-a5,b7-b5,a5-b6,g7-g6,b6-b7,f8-g7"),
-    case("IY-tYgxhgp2upx92x4Q8_", "a2-a4,g8-f6,a4-a5,b7-b5,a5-b6,g7-g6,b6-b7,f8-g7,b7Qa8,e8-h8"),
+    case("IY-tYgxhgp2upx92", "a2-a4,g8-f6,a4-a5,b7-b5,a5eb6,g7-g6,b6-b7,f8-g7"),
+    case("IY-tYgxhgp2upx92x4Q8_", "a2-a4,g8-f6,a4-a5,b7-b5,a5eb6,g7-g6,b6-b7,f8-g7,b7Qa8,e8cg8"),
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_decode_moves_base64(encoded: &str, expected_decoded: &str) {
-        let actual_decoded = match decode_moves_base64(encoded) {
+        let actual_move_stats = match decode_moves_base64(encoded) {
             Ok(moves) => {moves}
             Err(err) => {panic!("{}", err)}
         };
+        let actual_decoded = actual_move_stats.iter().map(|stats|{
+            stats.main_move.to_string()
+        }).collect::<Vec<String>>().join(",");
         assert_eq!(
             actual_decoded,
             expected_decoded,

@@ -1,4 +1,4 @@
-use crate::base::{Position, Color, Direction, MoveType, Move, CastlingType};
+use crate::base::{Position, Color, Direction, MoveType, FromTo, CastlingType};
 use crate::game::Board;
 use crate::figure::FigureType;
 use std::cmp::max;
@@ -103,7 +103,7 @@ fn get_first_opposite_color_figure_type_in_direction(
  * it's assumed that the passive king isn't in check at this point (because then the game should already by over).
  * this also means that the king
  */
-pub fn is_king_in_check_after(latest_move: Move, king_pos: Position, color: Color, board: &Board) -> bool {
+pub fn is_king_in_check_after(latest_move: FromTo, king_pos: Position, color: Color, board: &Board) -> bool {
     match latest_move.move_type {
         MoveType::Castling(castling_type) => {
             let castling_rook_end_pos = if castling_type == CastlingType::KingSide {
@@ -365,7 +365,7 @@ mod tests {
         king_pos_config: &str,
         expected_is_check: bool,
     ) {
-        let latest_move = latest_move_config.parse::<Move>().unwrap();
+        let latest_move = latest_move_config.parse::<FromTo>().unwrap();
         let game_state = game_state_config.parse::<GameState>().unwrap();
         let king_pos = king_pos_config.parse::<Position>().unwrap();
 
