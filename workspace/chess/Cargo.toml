@@ -1,5 +1,5 @@
 [package]
-name = "logic_core"
+name = "chess"
 version = "0.0.1"
 authors = ["StephanS <simon.void+github@gmail.com>"]
 description = "logic to verify that chess moves are valid"

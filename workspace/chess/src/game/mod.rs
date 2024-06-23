@@ -4,14 +4,14 @@ mod board_state;
 
 pub use crate::game::game_state::*;
 pub use crate::game::board::*;
-use crate::base::{Moves, ChessError, ErrorKind, FromTo, Position};
+use crate::base::{Moves, ChessError, ErrorKind, Position, Move, BasicMove};
 use std::{str, fmt};
 use crate::game::board_state::{BoardStates};
 
 #[derive(Clone, Debug)]
 pub struct Game {
     latest_state: GameState,
-    latest_move: Option<FromTo>,
+    latest_move: Option<BasicMove>,
     reachable_moves: Moves,
     board_states: BoardStates,
     half_moves_played: usize,
@@ -40,7 +40,7 @@ impl Game {
         }
     }
 
-    pub fn play(&self, a_move: FromTo) -> MoveResult {
+    pub fn play(&self, a_move: BasicMove) -> MoveResult {
         let (new_game_state, move_stats) = self.latest_state.do_move(a_move);
 
         let reachable_moves = match verify_game_state(&new_game_state) {
@@ -91,17 +91,17 @@ impl Game {
     }
 
     pub fn is_active_king_in_check(&self) -> bool {
-        self.latest_state.is_active_king_in_check(self.latest_move)
+        self.latest_state.is_active_king_in_check(self.latest_move.map(|basic_move: BasicMove| basic_move.from_to))
     }
 
     pub fn is_active_king_checkmate(&self) -> bool {
-        self.latest_state.is_active_king_checkmate(self.latest_move.expect("this method is not meant to be called before the first move is made"))
+        self.latest_state.is_active_king_checkmate(self.latest_move.expect("this method is not meant to be called before the first move is made").from_to)
     }
 
     pub fn get_fen(&self) -> String {
         let mut fen = self.latest_state.get_fen_part1to4();
         fen.push(' ');
-        fen.push_str((self.board_states.count_half_moves_without_progress()).to_string().as_str());
+        fen.push_str(self.board_states.count_half_moves_without_progress().to_string().as_str());
         fen.push(' ');
         fen.push_str(((self.half_moves_played / 2) + 1).to_string().as_str());
         fen
@@ -148,7 +148,7 @@ fn game_by_figures_on_board(trimmed_game_config: &str) -> Result<Game, ChessErro
 fn game_by_moves_from_start(token_iter: str::Split<char>) -> Result<Game, ChessError> {
     let mut game = Game::classic();
     for token in token_iter {
-        let a_move = token.parse::<FromTo>()?;
+        let a_move = token.parse::<BasicMove>()?;
         let move_result = game.play(a_move);
         match move_result {
             MoveResult::Ongoing(new_game, _) => {
@@ -168,7 +168,7 @@ fn game_by_moves_from_start(token_iter: str::Split<char>) -> Result<Game, ChessE
 fn verify_game_state(game_state: &GameState) -> Result<Moves, StoppedReason> {
     let passive_king_pos = game_state.get_passive_king_pos();
     let reachable_moves = game_state.get_reachable_moves();
-    if reachable_moves.iter().any(|reachable_move| reachable_move.to == passive_king_pos) {
+    if reachable_moves.iter().any(|reachable_move| reachable_move.from_to.to == passive_king_pos) {
         return Err(StoppedReason::KingInCheckAfterMove);
     }
     if !game_state.board.contains_sufficient_material_to_continue() {
@@ -182,7 +182,7 @@ pub enum MoveResult {
     /*
      * bool: was figure taken
      */
-    Ongoing(Box<Game>, MoveStats),
+    Ongoing(Box<Game>, Move),
     Stopped(StoppedReason, Box<GameState>),
 }
 
@@ -205,19 +205,19 @@ mod tests {
 
     #[rstest(
     game_config_testing_white, next_move_str, expected_is_insufficient_material,
-    case("white ♔e1 ♜f1 ♚e8", "e1-f1", true),
-    case("white ♔e1 ♜f1 ♘b1 ♘g1 ♚e8 ♞b8 ♞g8", "e1-f1", true),
-    case("white ♔e1 ♜f1 ♘b1 ♘g1 ♚e8 ♞b8 ♞g8 ♞h8", "e1-f1", false),
-    case("white ♔e1 ♜f1 ♚e8 ♞b8 ♞g8 ♞h8", "e1-f1", false),
-    case("white ♔e1 ♜f1 ♗b1 ♚e8 ♞b8 ♞g8", "e1-f1", true),
-    case("white ♔e1 ♜f1 ♗b1 ♚e8 ♝g8", "e1-f1", true),
-    case("white ♔e1 ♜f1 ♗b1 ♘g8 ♚e8", "e1-f1", false),
-    case("white ♔e1 ♜f1 ♗b1 ♗g8 ♚e8", "e1-f1", false),
-    case("white ♔e1 ♖b1 ♚e8", "e1-f1", false),
-    case("white ♔e1 ♛b1 ♚e8", "e1-f1", false),
-    case("white ♔e1 ♙b2 ♚e8", "e1-f1", false),
-    case("white ♔e1 ♙a2 ♙b2 ♙c2 ♙d2 ♙e2 ♙f2 ♚e8", "e1-f1", false),
-    case("white ♔a1 ♟a2 ♚a3", "a1-a2", false), // because king is in check after move
+    case("white ♔e1 ♜f1 ♚e8", "e1f1", true),
+    case("white ♔e1 ♜f1 ♘b1 ♘g1 ♚e8 ♞b8 ♞g8", "e1f1", true),
+    case("white ♔e1 ♜f1 ♘b1 ♘g1 ♚e8 ♞b8 ♞g8 ♞h8", "e1f1", false),
+    case("white ♔e1 ♜f1 ♚e8 ♞b8 ♞g8 ♞h8", "e1f1", false),
+    case("white ♔e1 ♜f1 ♗b1 ♚e8 ♞b8 ♞g8", "e1f1", true),
+    case("white ♔e1 ♜f1 ♗b1 ♚e8 ♝g8", "e1f1", true),
+    case("white ♔e1 ♜f1 ♗b1 ♘g8 ♚e8", "e1f1", false),
+    case("white ♔e1 ♜f1 ♗b1 ♗g8 ♚e8", "e1f1", false),
+    case("white ♔e1 ♖b1 ♚e8", "e1f1", false),
+    case("white ♔e1 ♛b1 ♚e8", "e1f1", false),
+    case("white ♔e1 ♙b2 ♚e8", "e1f1", false),
+    case("white ♔e1 ♙a2 ♙b2 ♙c2 ♙d2 ♙e2 ♙f2 ♚e8", "e1f1", false),
+    case("white ♔a1 ♟a2 ♚a3", "a1a2", false), // because king is in check after move
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_game_ends_bc_insufficient_material(
@@ -230,7 +230,7 @@ mod tests {
         }
 
         let game = game_config_testing_white.parse::<Game>().unwrap();
-        let next_move = next_move_str.parse::<FromTo>().unwrap();
+        let next_move = next_move_str.parse::<BasicMove>().unwrap();
         let move_result = game.play(next_move);
         assert_eq!(is_insufficient_material(move_result), expected_is_insufficient_material);
     }

@@ -100,64 +100,65 @@ fn get_first_opposite_color_figure_type_in_direction(
 }
 
 /**
- * it's assumed that the passive king isn't in check at this point (because then the game should already by over).
+ * it's assumed that the passive king isn't in check at this point (because then the game would already be over).
  * this also means that the king
  */
-pub fn is_king_in_check_after(latest_move: FromTo, king_pos: Position, color: Color, board: &Board) -> bool {
-    match latest_move.move_type {
-        MoveType::Castling(castling_type) => {
-            let castling_rook_end_pos = if castling_type == CastlingType::KingSide {
-                Position::new_unchecked(5, latest_move.to.row)
-            } else {
-                Position::new_unchecked(3, latest_move.to.row)
-            };
-            debug_assert!(!board.is_empty(castling_rook_end_pos), "{}", format!(
-                "board at castling rock pos must contain rook but is empty. expected rook pos: {}, king_pos: {}, latest_move: {}, board: {}",
-                castling_rook_end_pos, king_pos, latest_move, board
-            ));
-            if gives_chess(castling_rook_end_pos, king_pos, color, board).is_some() {
-                return true;
-            }
-        }
-        MoveType::EnPassant => {
-            debug_assert!(!board.is_empty(latest_move.to), "{}", format!(
-                "board is empty after enpassent move {} leading to board: {}",
-                latest_move, board
-            ));
-            if gives_chess(latest_move.to, king_pos, color, board).is_some() ||
-                find_attack_from_behind(latest_move.from, king_pos, color, board).is_some() {
-                return true;
-            }
-            let taken_pawn_pos: Position = Position::new_unchecked(latest_move.to.column, latest_move.from.row);
-            if find_attack_from_behind(taken_pawn_pos, king_pos, color, board).is_some() {
-                return true;
-            }
-        }
-        _ => {
-            #[cfg(debug_assertions)]
-            {
-                match board.get_figure(latest_move.to) {
-                    None => panic!(
-                        "to field mustn't be empty after move {} leading to board: {}",
-                        latest_move, board
-                    ),
-                    Some(attacker) => {
-                        let king_color = color;
-                        assert_ne!(
-                            attacker.color, king_color,
-                            "possible attacker should be of different color than king, but isn't: attacker pos: {}, latest_move: {}, attacker_type: {:?}, king_pos: {}, king_color: {}, board: {}",
-                            latest_move.to, latest_move, attacker.fig_type, king_pos, king_color, board
-                        )
-                    }
-                }
-            }
-            if gives_chess(latest_move.to, king_pos, color, board).is_some() ||
-                find_attack_from_behind(latest_move.from, king_pos, color, board).is_some() {
-                return true;
-            }
-        }
-    };
-    false
+pub fn is_king_in_check_after(_latest_move: FromTo, _king_pos: Position, _color: Color, _board: &Board) -> bool {
+    panic!("todo")
+    // match latest_move.move_type {
+    //     MoveType::Castling(castling_type) => {
+    //         let castling_rook_end_pos = if castling_type == CastlingType::KingSide {
+    //             Position::new_unchecked(5, latest_move.to.row)
+    //         } else {
+    //             Position::new_unchecked(3, latest_move.to.row)
+    //         };
+    //         debug_assert!(!board.is_empty(castling_rook_end_pos), "{}", format!(
+    //             "board at castling rock pos must contain rook but is empty. expected rook pos: {}, king_pos: {}, latest_move: {}, board: {}",
+    //             castling_rook_end_pos, king_pos, latest_move, board
+    //         ));
+    //         if gives_chess(castling_rook_end_pos, king_pos, color, board).is_some() {
+    //             return true;
+    //         }
+    //     }
+    //     MoveType::EnPassant => {
+    //         debug_assert!(!board.is_empty(latest_move.to), "{}", format!(
+    //             "board is empty after enpassent move {} leading to board: {}",
+    //             latest_move, board
+    //         ));
+    //         if gives_chess(latest_move.to, king_pos, color, board).is_some() ||
+    //             find_attack_from_behind(latest_move.from, king_pos, color, board).is_some() {
+    //             return true;
+    //         }
+    //         let taken_pawn_pos: Position = Position::new_unchecked(latest_move.to.column, latest_move.from.row);
+    //         if find_attack_from_behind(taken_pawn_pos, king_pos, color, board).is_some() {
+    //             return true;
+    //         }
+    //     }
+    //     _ => {
+    //         #[cfg(debug_assertions)]
+    //         {
+    //             match board.get_figure(latest_move.to) {
+    //                 None => panic!(
+    //                     "to field mustn't be empty after move {} leading to board: {}",
+    //                     latest_move, board
+    //                 ),
+    //                 Some(attacker) => {
+    //                     let king_color = color;
+    //                     assert_ne!(
+    //                         attacker.color, king_color,
+    //                         "possible attacker should be of different color than king, but isn't: attacker pos: {}, latest_move: {}, attacker_type: {:?}, king_pos: {}, king_color: {}, board: {}",
+    //                         latest_move.to, latest_move, attacker.fig_type, king_pos, king_color, board
+    //                     )
+    //                 }
+    //             }
+    //         }
+    //         if gives_chess(latest_move.to, king_pos, color, board).is_some() ||
+    //             find_attack_from_behind(latest_move.from, king_pos, color, board).is_some() {
+    //             return true;
+    //         }
+    //     }
+    // };
+    // false
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

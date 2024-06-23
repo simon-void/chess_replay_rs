@@ -28058,7 +28058,7 @@ function localstorage() {
 },{"./debug":233,"_process":480}],233:[function(require,module,exports){
 
 /**
- * This is the common logic_core for both the Node.js and web browser
+ * This is the common chess for both the Node.js and web browser
  * implementations of `debug()`.
  *
  * Expose `debug()` as the module.
@@ -28177,7 +28177,7 @@ function createDebug(namespace) {
   debug.useColors = exports.useColors();
   debug.color = selectColor(namespace);
 
-  // env-specific initialization logic_core for debug instances
+  // env-specific initialization chess for debug instances
   if ('function' === typeof exports.init) {
     exports.init(debug);
   }
@@ -28483,7 +28483,7 @@ function createWritableStdioStream (fd) {
 }
 
 /**
- * Init logic_core for `debug` instances.
+ * Init chess for `debug` instances.
  *
  * Create a new `inspectOpts` object in case `useColors` is set
  * differently for a particular `debug` instance.
@@ -30526,7 +30526,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
  * expecting.
  *
  * The invariant message will be stripped in production, but the invariant
- * will remain to ensure logic_core does not differ in production.
+ * will remain to ensure chess does not differ in production.
  */
 
 var invariant = function(condition, format, a, b, c, d, e, f) {
@@ -34238,7 +34238,7 @@ function compareMultiple(object, other, orders) {
       return result * (order == 'desc' ? -1 : 1);
     }
   }
-  // Fixes an `Array#sort` bug in the JS logic_core embedded in Adobe applications
+  // Fixes an `Array#sort` bug in the JS chess embedded in Adobe applications
   // that causes it, under certain circumstances, to provide the same value for
   // `object` and `other`. See https://github.com/jashkenas/underscore/pull/1247
   // for more details.

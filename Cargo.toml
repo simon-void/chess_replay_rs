@@ -3,7 +3,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "workspace/logic_core",
+    "workspace/chess",
     "workspace/wasm",
 ]
 

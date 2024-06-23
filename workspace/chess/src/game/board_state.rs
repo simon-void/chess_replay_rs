@@ -1,5 +1,5 @@
 use tinyvec::*;
-use crate::game::{StoppedReason, MoveStats};
+use crate::game::{StoppedReason, Move};
 use crate::base::Color;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
@@ -22,16 +22,16 @@ impl BoardState {
 //     }
 // }
 
-const INMEMORY_NR_OF_BOARD_STATES: usize = 20;
+const IN_MEMORY_NR_OF_BOARD_STATES: usize = 20;
 
 #[derive(Clone)]
 pub struct BoardStateArray {
-    array: [BoardState; INMEMORY_NR_OF_BOARD_STATES]
+    array: [BoardState; IN_MEMORY_NR_OF_BOARD_STATES]
 }
 
 impl tinyvec::Array for BoardStateArray {
     type Item = BoardState;
-    const CAPACITY: usize = INMEMORY_NR_OF_BOARD_STATES;
+    const CAPACITY: usize = IN_MEMORY_NR_OF_BOARD_STATES;
 
     fn as_slice(&self) -> &[Self::Item] {
         &self.array
@@ -43,7 +43,7 @@ impl tinyvec::Array for BoardStateArray {
 
     fn default() -> Self {
         BoardStateArray {
-            array: [BoardState::default(); INMEMORY_NR_OF_BOARD_STATES]
+            array: [BoardState::default(); IN_MEMORY_NR_OF_BOARD_STATES]
         }
     }
 }
@@ -70,12 +70,12 @@ impl BoardStates {
         }
     }
 
-    pub fn add_board_state_and_check_for_draw(&self, new_board_state: BoardState, turn_by: Color, move_stats: MoveStats) -> Result<BoardStates, StoppedReason> {
+    pub fn add_board_state_and_check_for_draw(&self, new_board_state: BoardState, turn_by: Color, a_move: Move) -> Result<BoardStates, StoppedReason> {
         let (
             new_white_board_states_history,
             new_black_board_states_history,
         ) = {
-            if move_stats.did_move_pawn || move_stats.did_catch_figure() {
+            if a_move.is_pawn_move || a_move.did_catch_figure() {
                 let mut new_white_board_states = tiny_vec!();
                 let mut new_black_board_states = tiny_vec!();
                 match turn_by {
@@ -145,7 +145,7 @@ impl BoardStates {
         );
         debug_assert!(
             {
-                if move_stats.did_catch_figure() || move_stats.did_move_pawn {
+                if a_move.did_catch_figure() || a_move.is_pawn_move {
                     let white_states_count = new_white_board_states_history.len() as isize;
                     let black_states_count = new_black_board_states_history.len() as isize;
                     match turn_by {

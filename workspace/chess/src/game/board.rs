@@ -118,15 +118,16 @@ impl Board {
     /**
     * returns if a figure was caught/replaced on that position
     */
-    pub fn set_figure(&mut self, pos: Position, figure: Figure) -> Option<(Figure, Position)> {
+    pub fn set_figure(&mut self, pos: Position, figure: Figure) -> CaptureInfoOption {
         let old_content = self.state[pos.index];
         self.state[pos.index] = Some(figure);
 
-        if old_content.is_none() {
+        if let Some(old_figure) = old_content {
+            CaptureInfoOption::from_some(old_figure, pos)
+        } else {
             self.number_of_figures += 1;
-        };
-
-        old_content.map(|old_figure| (old_figure, pos))
+            CaptureInfoOption::from_none()
+        }
     }
 
     pub fn clear_field(&mut self, pos: Position) {
@@ -313,6 +314,41 @@ pub const USIZE_RANGE_063: Range<usize> = 0..64;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FieldContent {
     Empty, OwnFigure, OpponentFigure,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct CaptureInfoOption(
+    Option<(Figure, Position)>
+);
+
+impl CaptureInfoOption {
+    pub fn from_some(figure_caught: Figure, figure_caught_on: Position) -> CaptureInfoOption {
+        CaptureInfoOption(Some((figure_caught, figure_caught_on)))
+    }
+
+    pub fn from_none() -> CaptureInfoOption {
+        CaptureInfoOption(None)
+    }
+
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.0.is_none()
+    }
+
+    pub fn get_captured_figure(&self) -> Option<Figure> {
+        self.0.map(|capture_info|{capture_info.0})
+    }
+
+    pub fn get_captured_on_pos(&self) -> Option<Position> {
+        self.0.map(|capture_info|{capture_info.1})
+    }
+
+    pub fn get_captured_figure_type(&self) -> Option<FigureType> {
+        self.0.map(|capture_info|{capture_info.0.fig_type})
+    }
 }
 
 //------------------------------Tests------------------------

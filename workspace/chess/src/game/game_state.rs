@@ -1,10 +1,9 @@
-use crate::base::{Color, Position, FromTo, Move, MoveType, Moves, ChessError, ErrorKind, Direction, Disallowable, PromotionType};
+use crate::base::{Color, Position, FromTo, Move, MoveType, Moves, ChessError, ErrorKind, Direction, Disallowable, PromotionType, BasicMove, CastlingType};
 use crate::figure::{Figure, FigureType, FigureAndPosition};
-use crate::game::{Board};
+use crate::game::{Board, CaptureInfo, CaptureInfoOption};
 use crate::figure::functions::check_search::{is_king_in_check, is_king_in_check_after};
 use tinyvec::*;
 use std::{fmt,str};
-use serde::Serialize;
 use crate::base::CastlingType::{KingSide, QueenSide};
 use crate::base::rc_list::{RcList};
 use crate::figure::functions::count_reachable::count_reachable_moves;
@@ -213,9 +212,12 @@ impl GameState {
     }
 
     // TODO change return type to Result<(GameState, Move), ChessError>
-    pub fn do_move(&self, mut next_move: FromTo, pawn_move_type: Option<PromotionType>) -> (GameState, Move) {
+    pub fn do_move(&self, next_move: BasicMove) -> (GameState, Move) {
+        let from = next_move.from_to.from;
+        let to = next_move.from_to.to;
+
         debug_assert!(
-            next_move.to != self.white_king_pos && next_move.to != self.black_king_pos,
+            to != self.white_king_pos && to != self.black_king_pos,
             "move {} would capture a king on game {}", next_move, self.board
         );
         debug_assert!(
@@ -228,7 +230,7 @@ impl GameState {
         );
 
         let mut new_board = self.board.clone();
-        let moving_figure: Figure = self.board.get_figure(next_move.from).unwrap();
+        let moving_figure: Figure = self.board.get_figure(from).unwrap();
 
         let mut new_is_white_queen_side_castling_allowed = self.is_white_queen_side_castling_still_allowed;
         let mut new_is_white_king_side_castling_allowed = self.is_white_king_side_castling_still_allowed;
@@ -236,16 +238,16 @@ impl GameState {
         let mut new_is_black_king_side_castling_allowed = self.is_black_king_side_castling_still_allowed;
 
         {
-            if next_move.from == WHITE_QUEEN_SIDE_ROOK_STARTING_POS || next_move.to == WHITE_QUEEN_SIDE_ROOK_STARTING_POS {
+            if from == WHITE_QUEEN_SIDE_ROOK_STARTING_POS || to == WHITE_QUEEN_SIDE_ROOK_STARTING_POS {
                 new_is_white_queen_side_castling_allowed.disallow()
             }
-            if next_move.from == WHITE_KING_SIDE_ROOK_STARTING_POS || next_move.to == WHITE_KING_SIDE_ROOK_STARTING_POS {
+            if from == WHITE_KING_SIDE_ROOK_STARTING_POS || to == WHITE_KING_SIDE_ROOK_STARTING_POS {
                 new_is_white_king_side_castling_allowed.disallow()
             }
-            if next_move.from == BLACK_QUEEN_SIDE_ROOK_STARTING_POS || next_move.to == BLACK_QUEEN_SIDE_ROOK_STARTING_POS {
+            if from == BLACK_QUEEN_SIDE_ROOK_STARTING_POS || to == BLACK_QUEEN_SIDE_ROOK_STARTING_POS {
                 new_is_black_queen_side_castling_allowed.disallow()
             }
-            if next_move.from == BLACK_KING_SIDE_ROOK_STARTING_POS || next_move.to == BLACK_KING_SIDE_ROOK_STARTING_POS {
+            if from == BLACK_KING_SIDE_ROOK_STARTING_POS || to == BLACK_KING_SIDE_ROOK_STARTING_POS {
                 new_is_black_king_side_castling_allowed.disallow()
             }
         }
@@ -257,7 +259,7 @@ impl GameState {
             move_stats,
         ) = match moving_figure.fig_type {
             FigureType::King => {
-                let is_castling = match new_board.get_figure(next_move.to) {
+                let is_castling = match new_board.get_figure(to) {
                     Some(Figure{fig_type: FigureType::Rook, color: rook_color }) => {
                         rook_color == moving_figure.color
                     }
@@ -265,16 +267,26 @@ impl GameState {
                 };
 
                 let (effective_king_move, figure_captured, castling_rook_move) = if is_castling {
-                    let (king_move, rook_move) = do_castling_move(&mut new_board, next_move, moving_figure.color);
+                    let (king_move, rook_move) = do_castling_move(&mut new_board, next_move.from_to, moving_figure.color);
                     (king_move, None, Some(rook_move))
                 } else {
-                    let figure_captured = do_normal_move(&mut new_board, next_move);
-                    (next_move, figure_captured, None)
+                    let capture_info = do_normal_move(&mut new_board, next_move.from_to);
+                    (next_move.from_to, capture_info.get_captured_figure_type(), None)
                 };
 
                 let king_move_stats = {
                     let mut stats = Move::new(effective_king_move, figure_captured);
-                    stats.castling_rook_move = castling_rook_move;
+                    let move_type = if let Some(rook_move) = castling_rook_move {
+                        let castling_type = if rook_move.to.column==3 {
+                            QueenSide
+                        } else {
+                            KingSide
+                        };
+                        MoveType::Castling(castling_type, rook_move)
+                    } else {
+                        MoveType::Normal
+                    };
+                    stats.move_type = move_type;
                     stats
                 };
 
@@ -314,21 +326,21 @@ impl GameState {
                     }
                     PawnMoveType::SingleStep
                 }
-                fn handle_pawn_promotion_after_move(new_board: &mut Board, pawn_move: FromTo, pawn_color: Color) {
-                    if let MoveType::PawnPromotion(promo_type) = pawn_move.move_type {
+                fn handle_pawn_promotion_after_move(new_board: &mut Board, pawn_move: BasicMove, pawn_color: Color) {
+                    if let Some(promo_type) = pawn_move.promotion_type {
                         new_board.set_figure(
-                            pawn_move.to,
+                            pawn_move.from_to.to,
                             Figure{ fig_type: promo_type.get_figure_type(), color: pawn_color }
                         );
                     }
                 }
 
-                match compute_pawn_move_type(self, next_move) {
+                match compute_pawn_move_type(self, next_move.from_to) {
                     PawnMoveType::SingleStep => {
-                        let figure_captured = do_normal_move(&mut new_board, next_move);
+                        let capture_info: CaptureInfoOption = do_normal_move(&mut new_board, next_move.from_to);
                         handle_pawn_promotion_after_move(&mut new_board, next_move, self.turn_by);
-                        let mut stats = Move::new(next_move, figure_captured);
-                        stats.did_move_pawn = true;
+                        let mut stats = Move::new(next_move.from_to, capture_info.get_captured_figure_type());
+                        stats.is_pawn_move = true;
                         (
                             self.white_king_pos, self.black_king_pos,
                             None,
@@ -336,38 +348,38 @@ impl GameState {
                         )
                     },
                     PawnMoveType::DoubleStep => {
-                        do_normal_move(&mut new_board, next_move);
-                        let mut stats = Move::new(next_move, None);
-                        stats.did_move_pawn = true;
+                        do_normal_move(&mut new_board, next_move.from_to);
+                        let mut stats = Move::new(next_move.from_to, None);
+                        stats.is_pawn_move = true;
                         (
                             self.white_king_pos, self.black_king_pos,
                             Some(Position::new_unchecked(
-                                next_move.to.column,
-                                (next_move.from.row + next_move.to.row) / 2,
+                                to.column,
+                                (from.row + to.row) / 2,
                             )),
                             stats,
                         )
                     },
                     PawnMoveType::EnPassantIntercept => {
-                        let pawn_captured = do_en_passant_move(&mut new_board, next_move);
-                        next_move.move_type = MoveType::EnPassant;
-                        let mut stats = Move::new(next_move, Some(pawn_captured));
-                        stats.did_move_pawn = true;
+                        do_en_passant_move(&mut new_board, next_move.from_to);
+                        let mut a_move = Move::new(next_move.from_to, Some(FigureType::Pawn));
+                        a_move.move_type = MoveType::EnPassant;
+                        a_move.is_pawn_move = true;
                         (
                             self.white_king_pos, self.black_king_pos,
                             None,
-                            stats,
+                            a_move,
                         )
                     },
                 }
             },
             _ => {
-                let figure_captured = do_normal_move(&mut new_board, next_move);
+                let capture_info = do_normal_move(&mut new_board, next_move.from_to);
                 (
                     self.white_king_pos,
                     self.black_king_pos,
                     None,
-                    Move::new(next_move, figure_captured),
+                    Move::new(next_move.from_to, capture_info.get_captured_figure_type()),
                 )
             },
         };
@@ -382,7 +394,7 @@ impl GameState {
             is_white_king_side_castling_still_allowed: new_is_white_king_side_castling_allowed,
             is_black_queen_side_castling_still_allowed: new_is_black_queen_side_castling_allowed,
             is_black_king_side_castling_still_allowed: new_is_black_king_side_castling_allowed,
-            moves_played: self.moves_played.append_new(next_move),
+            moves_played: self.moves_played.append_new(next_move.from_to),
         },
          move_stats,
         )
@@ -537,8 +549,8 @@ impl str::FromStr for GameState {
 fn game_by_moves_from_start(token_iter: str::Split<char>) -> Result<GameState, ChessError> {
     let mut game_state = GameState::classic();
     for token in token_iter {
-        let a_move = token.parse::<FromTo>()?;
-        let (new_game_state, _) = game_state.do_move(a_move);
+        let basic_move = token.parse::<BasicMove>()?;
+        let (new_game_state, _) = game_state.do_move(basic_move);
         game_state = new_game_state;
     }
     Ok(game_state)
@@ -588,7 +600,7 @@ fn game_by_figures_on_board(mut token_iter: str::Split<char>) -> Result<GameStat
 fn do_normal_move(
     new_board: &mut Board,
     next_move: FromTo,
-) -> Option<(Figure, Position)> {
+) -> CaptureInfoOption {
     let moving_figure: Figure = new_board.get_figure(next_move.from).expect("field the figure moves from is empty");
     new_board.clear_field(next_move.from);
     new_board.set_figure(next_move.to, moving_figure)
@@ -597,9 +609,9 @@ fn do_normal_move(
 /**
 * this function assumes that the king move given this function actually moves to the position of the rook
 * (this makes castling moves distinguishable from normal king moves in all initial positions of chess960,
-* e.g. think of initial position with king on f1 and rook on h1: would move f1-g1 come with intend to castle or not?)
+* e.g. think of initial position with king on f1 and rook on h1: would move f1g1 come with intend to castle or not?)
 * returns the effective move of king and rook
-* e.g. giving classic initial position, then king_move: e1-h1 would return (e1-g1, h1-f1)
+* e.g. giving classic initial position, then king_move: e1h1 would return (e1g1, h1f1)
 */
 fn do_castling_move(
     new_board: &mut Board,
@@ -634,13 +646,13 @@ fn do_castling_move(
 fn do_en_passant_move(
     new_board: &mut Board,
     next_move: FromTo,
-) -> (Figure, Position) {
+) -> CaptureInfoOption {
     do_normal_move(new_board, next_move);
     let double_stepped_pawn_pos =
         Position::new_unchecked(next_move.to.column, next_move.from.row);
     let pawn_captured = new_board.get_figure(double_stepped_pawn_pos).unwrap();
     new_board.clear_field(double_stepped_pawn_pos);
-    (pawn_captured, double_stepped_pawn_pos)
+    CaptureInfoOption::from_some(pawn_captured, double_stepped_pawn_pos)
 }
 
 enum PawnMoveType {
@@ -652,6 +664,10 @@ impl fmt::Display for GameState {
         write!(f, "{}'s turn", self.turn_by)?;
         writeln!(f, "{}", self.board)
     }
+}
+
+pub fn concat_main_moves(stats: Vec<Move>) -> String {
+    stats.iter().map(|move_stats| move_stats.main_move.to_string()).collect::<Vec<String>>().join(",")
 }
 
 pub static WHITE_KING_STARTING_POS: Position = Position::new_unchecked(4, 0);
@@ -705,10 +721,10 @@ mod tests {
     #[rstest(
     game_config_testing, expected_nr_of_reachable_moves,
     case("", 20),
-    case("e2-e4 e7-e5", 29),
-    case("e2-e4 a7-a6", 30),
-    case("e2-e4 b7-b5", 29),
-    case("a2-a4 a7-a6 a4-a5 b7-b5", 22), // en-passant
+    case("e2e4 e7e5", 29),
+    case("e2e4 a7a6", 30),
+    case("e2e4 b7b5", 29),
+    case("a2a4 a7a6 a4a5 b7b5", 22), // en-passant
     case("white ♔a1 ♙b5 ♟a6 Ec6 ♟c5 ♚e8", 6), // en-passant
     case("white ♖a2 ♔e2 ♖h2 ♚e8", 27), // no castling
     case("white ♖a1 ♔e1 ♖h1 ♚e8", 26), // castling
@@ -733,13 +749,13 @@ mod tests {
 
     #[rstest(
     game_config_testing, next_move_str, expected_catches_figure,
-    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "e1-d1", false),
-    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "e1-g1", false),
-    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "a2-a3", false),
-    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "a2-a4", false),
-    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "h1-h2", true),
-    case("b2-b4 a7-a6 b4-b5 c7-c5", "b5-c6", true),
-    case("b2-b4 a7-a6 b4-b5 c7-c5", "b5-a6", true),
+    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "e1d1", false),
+    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "e1g1", false),
+    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "a2a3", false),
+    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "a2a4", false),
+    case("white ♔e1 ♖h1 ♙a2 ♜h2 ♚e8", "h1h2", true),
+    case("b2b4 a7a6 b4b5 c7c5", "b5c6", true),
+    case("b2b4 a7a6 b4b5 c7c5", "b5a6", true),
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_do_move_catches_figure(
@@ -748,7 +764,7 @@ mod tests {
         expected_catches_figure: bool,
     ) {
         let game_state = game_config_testing.parse::<GameState>().unwrap();
-        let white_move = next_move_str.parse::<FromTo>().unwrap();
+        let white_move = next_move_str.parse::<BasicMove>().unwrap();
         let ( _, move_stats) = game_state.do_move(white_move);
         assert_eq!(move_stats.did_catch_figure(), expected_catches_figure, "white catches figure");
 
@@ -761,7 +777,7 @@ mod tests {
     #[test]
     fn test_game_state_toggle_colors() {
         let game_state = "white ♔b1 ♜h2 Eh6 ♟h5 ♚g7".parse::<GameState>().unwrap();
-        let white_move = "b1-c1".parse::<FromTo>().unwrap();
+        let white_move = "b1c1".parse::<BasicMove>().unwrap();
         assert_eq!(game_state.turn_by, Color::White);
         assert_eq!(game_state.get_passive_king_pos(), "g7".parse::<Position>().unwrap());
         assert_eq!(game_state.en_passant_intercept_pos.unwrap(), "h6".parse::<Position>().unwrap());
@@ -815,11 +831,11 @@ mod tests {
 
     #[rstest(
     game_state_config, promoting_move_str,
-    case("white ♔b6 ♙a7 ♚h6", "a7Qa8"),
-    case("white ♔b6 ♙a7 ♚h6", "a7Ra8"),
-    case("white ♔b6 ♙a7 ♚h6", "a7Ka8"),
-    case("white ♔b6 ♙a7 ♚h6", "a7Ba8"),
-    case("white ♔b6 ♙a7 ♞b8 ♚h6", "a7Qb8"),
+    case("white ♔b6 ♙a7 ♚h6", "a7a8Q"),
+    case("white ♔b6 ♙a7 ♚h6", "a7a8R"),
+    case("white ♔b6 ♙a7 ♚h6", "a7a8K"),
+    case("white ♔b6 ♙a7 ♚h6", "a7a8B"),
+    case("white ♔b6 ♙a7 ♞b8 ♚h6", "a7b8Q"),
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_pawn_promo_works(
@@ -827,15 +843,15 @@ mod tests {
         promoting_move_str: &str,
     ) {
         let game_state = game_state_config.parse::<GameState>().unwrap();
-        let promoting_move = promoting_move_str.parse::<FromTo>().unwrap();
+        let promoting_move = promoting_move_str.parse::<BasicMove>().unwrap();
         let expected_color_of_promoted_figure = game_state.turn_by;
-        let expected_promo_figure_type = if let MoveType::PawnPromotion(promo_type) = promoting_move.move_type {
+        let expected_promo_figure_type = if let MoveType::PawnPromotion(promo_type) = promoting_move.promotion_type {
             promo_type.get_figure_type()
         } else {
             panic!("expected move that includes a pawn promotion, but got {}", promoting_move_str)
         };
         let (new_game_state, _) = game_state.do_move(promoting_move);
-        let promoted_figure = new_game_state.board.get_figure(promoting_move.to);
+        let promoted_figure = new_game_state.board.get_figure(promoting_move.clone().from_to.to);
         if let Some(figure) = promoted_figure {
             println!("{}", new_game_state.get_fen_part1to4());
             assert_eq!(figure.color, expected_color_of_promoted_figure);
@@ -847,10 +863,10 @@ mod tests {
 
     #[rstest(
     game_state_config, castling_move_str, expected_updated_board_fen,
-    case("white ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e1Cc1", "r3k2r/8/8/8/8/8/8/2KR3R"),
-    case("white ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e1cg1", "r3k2r/8/8/8/8/8/8/R4RK1"),
-    case("black ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e8Cc8", "2kr3r/8/8/8/8/8/8/R3K2R"),
-    case("black ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e8cg8", "r4rk1/8/8/8/8/8/8/R3K2R"),
+    case("white ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e1c1", "r3k2r/8/8/8/8/8/8/2KR3R"),
+    case("white ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e1g1", "r3k2r/8/8/8/8/8/8/R4RK1"),
+    case("black ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e8c8", "2kr3r/8/8/8/8/8/8/R3K2R"),
+    case("black ♖a1 ♔e1 ♖h1 ♜a8 ♚e8 ♜h8", "e8g8", "r4rk1/8/8/8/8/8/8/R3K2R"),
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_castling_works(
@@ -859,7 +875,7 @@ mod tests {
         expected_updated_board_fen: &str,
     ) {
         let game_state = game_state_config.parse::<GameState>().unwrap();
-        let castling_move = castling_move_str.parse::<FromTo>().unwrap();
+        let castling_move = castling_move_str.parse::<BasicMove>().unwrap();
 
         let (new_game_state, _) = game_state.do_move(castling_move);
         let actual_updated_board_fen = new_game_state.board.get_fen_part1();
@@ -869,8 +885,8 @@ mod tests {
     #[rstest(
     game_config_testing, expected_moves_played,
     case("", ""),
-    case("e2-e4", "e2-e4"),
-    case("e2-e4 e7-e5 g1-f3", "e2-e4, e7-e5, g1-f3"),
+    case("e2e4", "e2e4"),
+    case("e2e4 e7e5 g1f3", "e2e4, e7e5, g1f3"),
     ::trace //This leads to the arguments being printed in front of the test result.
     )]
     fn test_get_moves_played(

@@ -19,45 +19,46 @@ pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_stat
     }
 }
 
-fn get_attack_situation(king_pos: Position, king_color: Color, game_state: &GameState, after_move: FromTo) -> AttackerNumber {
-    match after_move.move_type {
-        MoveType::Castling(castling_type) => {
-            let rock_row = if game_state.turn_by==Color::White {
-                7
-            } else {
-                0
-            };
-            let castling_rook_end_pos = if castling_type == CastlingType::KingSide {
-                Position::new_unchecked(5, rock_row)
-            } else {
-                Position::new_unchecked(3, rock_row)
-            };
-            if let Some(attack) = gives_chess(castling_rook_end_pos, king_pos, king_color, &game_state.board) {
-                AttackerNumber::One(attack)
-            } else {
-                AttackerNumber::Zero
-            }
-        }
-        MoveType::EnPassant => {
-            let is_check_from_end_pos = gives_chess(after_move.to, king_pos, king_color, &game_state.board);
-            let is_check_from_behind_start_pos = find_attack_from_behind(after_move.from, king_pos, king_color, &game_state.board);
-            match is_check_from_end_pos {
-                None => {
-                    let taken_pawn_pos: Position = Position::new_unchecked(after_move.to.column, after_move.from.row);
-                    let is_check_from_behind_taken_pawn = find_attack_from_behind(taken_pawn_pos, king_pos, king_color, &game_state.board);
-                    AttackerNumber::from_two_possibilities(is_check_from_behind_start_pos, is_check_from_behind_taken_pawn)
-                }
-                Some(_) => {
-                    AttackerNumber::from_two_possibilities(is_check_from_behind_start_pos, is_check_from_end_pos)
-                }
-            }
-        }
-        _ => {
-            let is_check_from_end_pos = gives_chess(after_move.to, king_pos, king_color, &game_state.board);
-            let is_check_from_behind_start_pos = find_attack_from_behind(after_move.from, king_pos, king_color, &game_state.board);
-            AttackerNumber::from_two_possibilities(is_check_from_end_pos, is_check_from_behind_start_pos)
-        }
-    }
+fn get_attack_situation(_king_pos: Position, _king_color: Color, _game_state: &GameState, _after_move: FromTo) -> AttackerNumber {
+    panic!("todo")
+    // match after_move.move_type {
+    //     MoveType::Castling(castling_type) => {
+    //         let rock_row = if game_state.turn_by==Color::White {
+    //             7
+    //         } else {
+    //             0
+    //         };
+    //         let castling_rook_end_pos = if castling_type == CastlingType::KingSide {
+    //             Position::new_unchecked(5, rock_row)
+    //         } else {
+    //             Position::new_unchecked(3, rock_row)
+    //         };
+    //         if let Some(attack) = gives_chess(castling_rook_end_pos, king_pos, king_color, &game_state.board) {
+    //             AttackerNumber::One(attack)
+    //         } else {
+    //             AttackerNumber::Zero
+    //         }
+    //     }
+    //     MoveType::EnPassant => {
+    //         let is_check_from_end_pos = gives_chess(after_move.to, king_pos, king_color, &game_state.board);
+    //         let is_check_from_behind_start_pos = find_attack_from_behind(after_move.from, king_pos, king_color, &game_state.board);
+    //         match is_check_from_end_pos {
+    //             None => {
+    //                 let taken_pawn_pos: Position = Position::new_unchecked(after_move.to.column, after_move.from.row);
+    //                 let is_check_from_behind_taken_pawn = find_attack_from_behind(taken_pawn_pos, king_pos, king_color, &game_state.board);
+    //                 AttackerNumber::from_two_possibilities(is_check_from_behind_start_pos, is_check_from_behind_taken_pawn)
+    //             }
+    //             Some(_) => {
+    //                 AttackerNumber::from_two_possibilities(is_check_from_behind_start_pos, is_check_from_end_pos)
+    //             }
+    //         }
+    //     }
+    //     _ => {
+    //         let is_check_from_end_pos = gives_chess(after_move.to, king_pos, king_color, &game_state.board);
+    //         let is_check_from_behind_start_pos = find_attack_from_behind(after_move.from, king_pos, king_color, &game_state.board);
+    //         AttackerNumber::from_two_possibilities(is_check_from_end_pos, is_check_from_behind_start_pos)
+    //     }
+    // }
 }
 
 fn is_active_king_checkmate_from_attack(attack: Attack, king_pos: Position, king_color: Color, game_state: &GameState) -> bool {
@@ -353,16 +354,17 @@ mod tests {
         expected_is_mate: bool,
     ) {
         // pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_state: &GameState, after_move: Move) -> bool {
-        let latest_move = move_config.parse::<FromTo>().unwrap();
-        let (game_state, _) = game_state_config.parse::<GameState>().unwrap().do_move(latest_move);
-        let king_pos = game_state.get_active_king();
-        let color = game_state.turn_by;
-
-        let actual_is_mate = is_active_king_checkmate(king_pos, color, &game_state, latest_move);
-        assert_eq!(actual_is_mate, expected_is_mate);
-
-        let actual_is_mate_toggled = is_active_king_checkmate(king_pos.toggle_row(), color.toggle(), &game_state.toggle_colors(), latest_move.toggle_rows());
-        assert_eq!(actual_is_mate_toggled, expected_is_mate);
+        panic!("todo")
+        // let latest_move = move_config.parse::<FromTo>().unwrap();
+        // let (game_state, _) = game_state_config.parse::<GameState>().unwrap().do_move(latest_move);
+        // let king_pos = game_state.get_active_king();
+        // let color = game_state.turn_by;
+        //
+        // let actual_is_mate = is_active_king_checkmate(king_pos, color, &game_state, latest_move);
+        // assert_eq!(actual_is_mate, expected_is_mate);
+        //
+        // let actual_is_mate_toggled = is_active_king_checkmate(king_pos.toggle_row(), color.toggle(), &game_state.toggle_colors(), latest_move.toggle_rows());
+        // assert_eq!(actual_is_mate_toggled, expected_is_mate);
     }
 
     //♔♕♗♘♖♙♚♛♝♞♜♟
@@ -391,13 +393,14 @@ mod tests {
         expected_attack_situation: AttackerNumber,
     ) {
         // pub fn is_active_king_checkmate(king_pos: Position, king_color: Color, game_state: &GameState, after_move: Move) -> bool {
-        let latest_move = move_config.parse::<FromTo>().unwrap();
-        let (game_state, _) = game_state_config.parse::<GameState>().unwrap().do_move(latest_move);
-        let king_pos = game_state.get_active_king();
-        let color = game_state.turn_by;
-
-        let actual_attack_situation = get_attack_situation(king_pos, color, &game_state, latest_move);
-        assert_eq!(actual_attack_situation, expected_attack_situation);
+        panic!("todo")
+        // let latest_move = move_config.parse::<FromTo>().unwrap();
+        // let (game_state, _) = game_state_config.parse::<GameState>().unwrap().do_move(latest_move);
+        // let king_pos = game_state.get_active_king();
+        // let color = game_state.turn_by;
+        //
+        // let actual_attack_situation = get_attack_situation(king_pos, color, &game_state, latest_move);
+        // assert_eq!(actual_attack_situation, expected_attack_situation);
     }
 }
 

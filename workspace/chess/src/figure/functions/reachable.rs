@@ -88,8 +88,7 @@ fn for_reachable_pawn_moves(
                     if en_passant_intercept_pos==diagonal_forward_pos {
                         move_collector.push(FromTo {
                             from: pawn_pos,
-                            to: diagonal_forward_pos,
-                            move_type: MoveType::EnPassant
+                            to: diagonal_forward_pos
                         });
                     }
                 }

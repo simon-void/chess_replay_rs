@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
-use logic_core::*;
-use logic_core::base::{ChessError, FromTo, Move, PromotionType};
-use logic_core::game::{GameState};
+use chess::*;
+use chess::base::{ChessError, FromTo, Move, PromotionType};
+use chess::game::{GameState};
 
 pub use crate::figure::functions::allowed::get_allowed_moves;
 pub use crate::game::Game;
@@ -291,6 +291,7 @@ pub fn get_fen(game_config: &str) -> JsValue {
 mod tests {
     use super::*;
     use rstest::*;
+    use chess::game::concat_main_moves;
 
     #[rstest(
     encoded, expected_decoded,
@@ -301,13 +302,13 @@ mod tests {
     fn test_decode_moves_base64(encoded: &str, expected_decoded: &str) {
         let actual_move_stats = match decode_moves_base64(encoded) {
             Ok(moves) => {moves}
-            Err(err) => {panic!("{}", err)}
+            Err(err) => {panic!("{err}")}
         };
         let actual_decoded = actual_move_stats.iter().map(|stats|{
             stats.main_move.to_string()
         }).collect::<Vec<String>>().join(",");
         assert_eq!(
-            actual_decoded,
+            concat_main_moves(actual_decoded),
             expected_decoded,
         );
     }

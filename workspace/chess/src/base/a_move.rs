@@ -10,7 +10,7 @@ use serde::Serialize;
 use crate::base::MoveType::{Castling, EnPassant, Normal, PawnPromotion};
 
 
-#[derive(Debug, Copy, Clone, Default, Serialize)]
+#[derive(Debug, Copy, Clone, Serialize)]
 pub struct Move {
     pub main_move: FromTo,
     // figure_captured and is_pawn_move are not as useful as normally for a chess engine
@@ -50,8 +50,12 @@ impl Move {
             main_move: FromTo::new(king_from, king_to),
             figure_captured: None,
             is_pawn_move: false,
-            move_type: MoveType::Castling(castling_type, FromTo::new(rook_from, rook_to)),
+            move_type: Castling(castling_type, FromTo::new(rook_from, rook_to)),
         }
+    }
+
+    pub fn did_catch_figure(&self) -> bool {
+        self.figure_captured.is_some()
     }
 }
 
@@ -111,17 +115,88 @@ impl fmt::Debug for FromTo {
     }
 }
 
-// Default is needed, so that Move can be stored in a TinyVec
-impl Default for FromTo {
-    fn default() -> Self {
-        FromTo {
-            from: Position::new_unchecked(1, 2),
-            to: Position::new_unchecked(6, 5),
+impl Serialize for FromTo {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error> where
+        S: serde::Serializer {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct BasicMove {
+    pub from_to: FromTo,
+    pub promotion_type: Option<PromotionType>,
+}
+
+impl BasicMove {
+    pub fn new(from_to: FromTo) -> BasicMove {
+        BasicMove {
+            from_to,
+            promotion_type: None,
+        }
+    }
+
+    pub fn new_with_promotion(from_to: FromTo, promotion_type: PromotionType) -> BasicMove {
+        BasicMove {
+            from_to,
+            promotion_type: Some(promotion_type),
         }
     }
 }
 
-impl Serialize for FromTo {
+impl str::FromStr for BasicMove {
+    type Err = ChessError;
+
+    fn from_str(code: &str) -> Result<Self, Self::Err> {
+        match code.len() {
+            4 => {
+                let from_to = code.parse::<FromTo>()?;
+                Ok(BasicMove::new(from_to))
+            }
+            5 => {
+                let from_to = code[0..4].parse::<FromTo>()?;
+                let pawn_move_type = code[4..5].parse::<PromotionType>()?;
+                Ok(BasicMove::new_with_promotion(from_to, pawn_move_type))
+            }
+            _ => {
+                return Err(ChessError {
+                    msg: format!("illegal move format: {}", code),
+                    kind: ErrorKind::IllegalFormat,
+                })
+            }
+        }
+    }
+}
+
+impl fmt::Display for BasicMove {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.from_to)?;
+        if let Some(promotion_type) = self.promotion_type {
+            write!(f, "{}", promotion_type)?
+        };
+        Ok(())
+    }
+}
+
+impl fmt::Debug for BasicMove {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+// Default is needed, so that Move can be stored in a TinyVec
+impl Default for BasicMove {
+    fn default() -> Self {
+        BasicMove::new(FromTo::new(
+            // default values should never be used, so illegal values are fine
+            // (they are necessary for TinyVec)
+            Position::new_unchecked(9, 9),
+            Position::new_unchecked(9, 9),
+        ))
+    }
+}
+
+impl Serialize for BasicMove {
     fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error> where
         S: serde::Serializer {
         serializer.serialize_str(&format!("{}", self))
@@ -132,11 +207,11 @@ pub const EXPECTED_MAX_NUMBER_OF_MOVES: usize = 80;
 
 #[derive(Clone)]
 pub struct MoveArray {
-    array: [FromTo; EXPECTED_MAX_NUMBER_OF_MOVES]
+    array: [BasicMove; EXPECTED_MAX_NUMBER_OF_MOVES]
 }
 
 impl tinyvec::Array for MoveArray {
-    type Item = FromTo;
+    type Item = BasicMove;
     const CAPACITY: usize = EXPECTED_MAX_NUMBER_OF_MOVES;
 
     fn as_slice(&self) -> &[Self::Item] {
@@ -149,7 +224,7 @@ impl tinyvec::Array for MoveArray {
 
     fn default() -> Self {
         MoveArray {
-            array: [FromTo::default(); EXPECTED_MAX_NUMBER_OF_MOVES]
+            array: [BasicMove::default(); EXPECTED_MAX_NUMBER_OF_MOVES]
         }
     }
 }
@@ -192,28 +267,22 @@ impl str::FromStr for PromotionType {
     }
 }
 
+impl fmt::Display for PromotionType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let code = match self {
+            PromotionType::Queen => "Q",
+            PromotionType::Rook => "R",
+            PromotionType::Knight => "K",
+            PromotionType::Bishop => "B",
+        };
+        write!(f, "{}", code)
+    }
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CastlingType {
     KingSide,
     QueenSide,
-}
-
-impl str::FromStr for MoveType {
-    type Err = ChessError;
-
-    fn from_str(s: &str) -> Result<MoveType, Self::Err> {
-        match s {
-            "-" => Ok(Normal),
-            "Q" => Ok(PawnPromotion(PromotionType::Queen)),
-            "R" => Ok(PawnPromotion(PromotionType::Rook)),
-            "K" => Ok(PawnPromotion(PromotionType::Knight)),
-            "B" => Ok(PawnPromotion(PromotionType::Bishop)),
-            _ => Err(ChessError{
-                msg: format!("unknown move type: {}. Only '-QRKB' are allowed.", s),
-                kind: ErrorKind::IllegalFormat
-            }),
-        }
-    }
 }
 
 impl fmt::Display for MoveType {
