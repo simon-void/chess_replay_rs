@@ -1,13 +1,9 @@
 use crate::base::{Color, Position, FromTo, Move, MoveType, Moves, ChessError, ErrorKind, Direction, Disallowable, PromotionType, BasicMove, CastlingType};
 use crate::figure::{Figure, FigureType, FigureAndPosition};
-use crate::game::{Board, CaptureInfo, CaptureInfoOption};
-use crate::figure::functions::check_search::{is_king_in_check, is_king_in_check_after};
+use crate::game::{Board, CaptureInfoOption};
 use tinyvec::*;
 use std::{fmt,str};
 use crate::base::CastlingType::{KingSide, QueenSide};
-use crate::base::rc_list::{RcList};
-use crate::figure::functions::count_reachable::count_reachable_moves;
-use crate::figure::functions::checkmate::is_active_king_checkmate;
 
 #[derive(Clone, Debug)]
 pub struct GameState {
@@ -20,7 +16,7 @@ pub struct GameState {
     pub is_white_king_side_castling_still_allowed: Disallowable,
     pub is_black_queen_side_castling_still_allowed: Disallowable,
     pub is_black_king_side_castling_still_allowed: Disallowable,
-    moves_played: RcList<FromTo>,
+    moves_played: Vec<FromTo>,
 }
 
 impl GameState {
@@ -35,7 +31,7 @@ impl GameState {
             is_white_king_side_castling_still_allowed: Disallowable::new(true),
             is_black_queen_side_castling_still_allowed: Disallowable::new(true),
             is_black_king_side_castling_still_allowed: Disallowable::new(true),
-            moves_played: RcList::new(),
+            moves_played: Vec::new(),
         }
     }
 
@@ -193,7 +189,7 @@ impl GameState {
             is_white_king_side_castling_still_allowed: is_white_king_side_castling_possible,
             is_black_queen_side_castling_still_allowed: is_black_queen_side_castling_possible,
             is_black_king_side_castling_still_allowed: is_black_king_side_castling_possible,
-            moves_played: RcList::new(),
+            moves_played: Vec::new(),
         };
 
         Ok(game_state)
@@ -419,46 +415,6 @@ impl GameState {
         move_collector
     }
 
-    pub fn count_reachable_moves_diff_for_white(&self) -> isize {
-
-        let (
-            white_figures_and_their_pos,
-            black_figures_and_their_pos,
-        ) = self.board.get_white_and_black_figures();
-
-        fn count_reachable_moves_for_color(
-            game_state: &GameState,
-            color: Color,
-            figures_of_color_with_pos: [Option<(FigureType, Position)>; 16],
-        ) -> usize {
-            let mut reachable_move_counter: usize = 0;
-            for figure_of_color in figures_of_color_with_pos {
-                match figure_of_color {
-                    Some((fig_type, pos)) => {
-                        reachable_move_counter += count_reachable_moves(fig_type, color, pos, &game_state.board);
-                    },
-                    None => {
-                        break;
-                    }
-                }
-            }
-            reachable_move_counter
-        }
-
-        let white_reachable_moves_count = count_reachable_moves_for_color(
-            self,
-            Color::White,
-            white_figures_and_their_pos,
-        ) as isize;
-        let black_reachable_moves_count = count_reachable_moves_for_color(
-            self,
-            Color::Black,
-            black_figures_and_their_pos,
-        ) as isize;
-
-        white_reachable_moves_count - black_reachable_moves_count
-    }
-
     pub fn get_passive_kings_pos(&self) -> Position {
         match self.turn_by {
             Color::White => self.black_king_pos,
@@ -471,19 +427,6 @@ impl GameState {
             Color::Black => {self.white_king_pos}
             Color::White => {self.black_king_pos}
         }
-    }
-
-    pub fn is_active_king_in_check(&self, opt_latest_move: Option<FromTo>) -> bool {
-        let king_pos = self.get_active_king();
-        match opt_latest_move {
-            None => {is_king_in_check(king_pos, self.turn_by, &self.board)}
-            Some(latest_move) => {is_king_in_check_after(latest_move, king_pos, self.turn_by, &self.board)}
-        }
-    }
-
-    pub fn is_active_king_checkmate(&self, latest_move: FromTo) -> bool {
-        let king_pos = self.get_active_king();
-        is_active_king_checkmate(king_pos, self.turn_by, self, latest_move)
     }
 
     pub fn get_active_king(&self) -> Position {
