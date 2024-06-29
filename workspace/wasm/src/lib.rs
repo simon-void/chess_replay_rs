@@ -6,12 +6,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
-use chess::*;
-use chess::base::{ChessError, FromTo, MoveData, PromotionType};
-use chess::game::{GameState};
-
-pub use crate::figure::functions::allowed::get_allowed_moves;
-pub use crate::game::Game;
+use chess::base::{ChessError, FromTo, Move, MoveData, PromotionType};
+use chess::game::{Game, GameState};
 
 // This is like the `main` function, except for JavaScript.
 #[wasm_bindgen(start)]
@@ -68,13 +64,13 @@ fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<MoveData>, String> {
     let mut game_state = GameState::classic();
 
     loop {
-        let mut next_move_str = {
+        let next_move_str = {
             let from_pos_enc: char = match encoded_chars.next() {
                 None => { break; }
                 Some(pos) => { pos }
             };
             let to_pos_enc: char = match encoded_chars.next() {
-                None => { return Err(format!("encoded from-position without to-position")); }
+                None => { return Err("last encoded from-position without to-position".to_string()); }
                 Some(pos) => { pos }
             };
             let mut move_to_fill: String = String::with_capacity(5);
@@ -90,10 +86,15 @@ fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<MoveData>, String> {
 
         let next_move = next_move_str.parse::<FromTo>().map_err(chess_error_to_string)?;
         let pawn_promotion: Option<PromotionType> = if game_state.looks_like_pawn_promotion_move(next_move) {
-            let next_char = encoded_chars.next().expect("missing pawn promotion character");
-            next_char.parse::<PromotionType>().map_err(chess_error_to_string)?;
+            let next_char = encoded_chars.next().expect("missing pawn promotion character").to_string();
+            let promotion_type = next_char.parse::<PromotionType>().map_err(chess_error_to_string)?;
+            Some(promotion_type)
         } else { None };
-        let new_game_and_stats = game_state.do_move(next_move, pawn_promotion);
+        let next_move = match pawn_promotion {
+            None => {Move::new(next_move)}
+            Some(pawn_promotion) => {Move::new_with_promotion(next_move, pawn_promotion)}
+        };
+        let new_game_and_stats = game_state.do_move(next_move);
         game_state = new_game_and_stats.0;
         move_stats.push(new_game_and_stats.1);
     }
@@ -304,11 +305,8 @@ mod tests {
             Ok(moves) => {moves}
             Err(err) => {panic!("{err}")}
         };
-        let actual_decoded = actual_move_stats.iter().map(|stats|{
-            stats.main_move.to_string()
-        }).collect::<Vec<String>>().join(",");
         assert_eq!(
-            concat_main_moves(actual_decoded),
+            concat_main_moves(actual_move_stats),
             expected_decoded,
         );
     }

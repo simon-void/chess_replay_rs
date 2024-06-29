@@ -10,7 +10,9 @@ use serde::Serialize;
 use crate::base::MoveType::{Castling, EnPassant, Normal, PawnPromotion};
 
 
-#[derive(Debug, Clone, Serialize)]
+// TODO MoveData should implement Claim as soon as it's added to the language.
+// see https://smallcultfollowing.com/babysteps/blog/2024/06/21/claim-auto-and-otherwise/
+#[derive(Debug, Copy, Clone, Serialize)]
 pub struct MoveData {
     pub main_move: FromTo,
     // figure_captured and is_pawn_move are not as useful as normally for a chess engine
@@ -231,7 +233,7 @@ impl tinyvec::Array for MoveArray {
 
 pub type Moves = TinyVec<MoveArray>;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 pub enum PromotionType {
     Rook,
     Knight,
@@ -279,7 +281,7 @@ impl fmt::Display for PromotionType {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 pub enum CastlingType {
     KingSide,
     QueenSide,
@@ -301,7 +303,7 @@ impl fmt::Display for MoveType {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 pub enum MoveType {
     Normal,
     PawnPromotion(PromotionType),
