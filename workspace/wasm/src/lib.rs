@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use chess::*;
-use chess::base::{ChessError, FromTo, Move, PromotionType};
+use chess::base::{ChessError, FromTo, MoveData, PromotionType};
 use chess::game::{GameState};
 
 pub use crate::figure::functions::allowed::get_allowed_moves;
@@ -62,9 +62,9 @@ pub fn decode_moves(base64_encoded: &str) -> JsValue {
     JsValue::from_str(json.as_str())
 }
 
-fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<Move>, String> {
+fn decode_moves_base64(base64_encoded: &str) -> Result<Vec<MoveData>, String> {
     let mut encoded_chars= base64_encoded.chars();
-    let mut move_stats: Vec<Move> = Vec::with_capacity(base64_encoded.len() * 2 + 4);
+    let mut move_stats: Vec<MoveData> = Vec::with_capacity(base64_encoded.len() * 2 + 4);
     let mut game_state = GameState::classic();
 
     loop {

@@ -13,8 +13,9 @@ pub struct Figure {
 }
 
 impl Figure {
-    pub fn for_reachable_moves(&self, pos: Position, match_state: &GameState, move_collector: &mut Moves) {
-        functions::is_reachable_by::for_reachable_moves(self.fig_type, pos, match_state, move_collector)
+    pub fn for_reachable_moves(&self, _pos: Position, _match_state: &GameState, _move_collector: &mut Moves) {
+        // functions::is_reachable_by::for_reachable_moves(self.fig_type, pos, match_state, move_collector)
+        panic!("TODO: reimplement or delete")
     }
 
     pub fn get_fen_char(&self) -> char {

@@ -12,7 +12,7 @@ pub fn get_positions_to_reach_target_from(
     let mut result = Vec::<Position>::with_capacity(4);
 
     fn find_first_active_figure_on(start: Position, direction: Direction, active_color: Color, board: &Board) -> Option<FoundFigure> {
-        let mut pos = start;
+        let pos = start;
         let mut distance: usize = 1;
         loop {
             if let Some(pos) = pos.step(direction) {
@@ -83,15 +83,15 @@ pub fn get_positions_to_reach_target_from(
             // check only straight pawn moves
             let single_step_straight_pos = target.step_unchecked(vertical_direction);
             if contains_active_pawn(Some(single_step_straight_pos), active_color, board) {
-                result.push(single_step_straight_pos.unwrap());
+                result.push(single_step_straight_pos);
             }
 
-            let target_row_eligable_for_double_step = if active_color==Color::White {3} else {4};
-            if target.column==target_row_eligable_for_double_step && single_step_straight_pos.map(|pos|board.is_empty(pos)).unwrap_or(false) {
+            let target_row_eligible_for_double_step = if active_color==Color::White {3} else {4};
+            if target.column== target_row_eligible_for_double_step && board.is_empty(single_step_straight_pos) {
                 // check double step pawn move
                 let double_step_straight_pos = single_step_straight_pos.step_unchecked(vertical_direction);
                 if contains_active_pawn(Some(double_step_straight_pos), active_color, board) {
-                    result.push(single_step_straight_pos.unwrap());
+                    result.push(single_step_straight_pos);
                 }
             }
         }
@@ -103,13 +103,13 @@ pub fn get_positions_to_reach_target_from(
             } else {
                 [Direction::UpLeft, Direction::UpRight]
             };
-            attack_pawn_directions.map(|direction: Direction|target.step(direction)).iter().for_each(|opt_pos|{
+            attack_pawn_directions.map(|direction: Direction|target.step(direction)).iter().for_each(|&opt_pos|{
                 if let Some(pos) = opt_pos {
-                    board.get_figure(pos).map(|figure|{
+                    if let Some(figure)= board.get_figure(pos) {
                         if figure.fig_type == FigureType::Pawn && figure.color==active_color {
-                            result.push(pos)
+                            result.push(pos);
                         }
-                    })
+                    };
                 }
             });
         }

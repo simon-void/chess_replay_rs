@@ -4,14 +4,14 @@ mod board_state;
 
 pub use crate::game::game_state::*;
 pub use crate::game::board::*;
-use crate::base::{Moves, ChessError, ErrorKind, Position, Move, BasicMove};
+use crate::base::{Moves, ChessError, ErrorKind, Position, MoveData, Move};
 use std::{str, fmt};
 use crate::game::board_state::{BoardStates};
 
 #[derive(Clone, Debug)]
 pub struct Game {
     latest_state: GameState,
-    latest_move: Option<BasicMove>,
+    latest_move: Option<Move>,
     reachable_moves: Moves,
     board_states: BoardStates,
     half_moves_played: usize,
@@ -40,7 +40,7 @@ impl Game {
         }
     }
 
-    pub fn play(&self, a_move: BasicMove) -> MoveResult {
+    pub fn play(&self, a_move: Move) -> MoveResult {
         let (new_game_state, move_stats) = self.latest_state.do_move(a_move);
 
         let reachable_moves = match verify_game_state(&new_game_state) {
@@ -88,14 +88,6 @@ impl Game {
 
     pub fn is_passive_king_pos(&self, reachable_field: Position) -> bool {
         reachable_field == self.latest_state.get_passive_king_pos()
-    }
-
-    pub fn is_active_king_in_check(&self) -> bool {
-        self.latest_state.is_active_king_in_check(self.latest_move.map(|basic_move: BasicMove| basic_move.from_to))
-    }
-
-    pub fn is_active_king_checkmate(&self) -> bool {
-        self.latest_state.is_active_king_checkmate(self.latest_move.expect("this method is not meant to be called before the first move is made").from_to)
     }
 
     pub fn get_fen(&self) -> String {
@@ -148,7 +140,7 @@ fn game_by_figures_on_board(trimmed_game_config: &str) -> Result<Game, ChessErro
 fn game_by_moves_from_start(token_iter: str::Split<char>) -> Result<Game, ChessError> {
     let mut game = Game::classic();
     for token in token_iter {
-        let a_move = token.parse::<BasicMove>()?;
+        let a_move = token.parse::<Move>()?;
         let move_result = game.play(a_move);
         match move_result {
             MoveResult::Ongoing(new_game, _) => {
@@ -182,7 +174,7 @@ pub enum MoveResult {
     /*
      * bool: was figure taken
      */
-    Ongoing(Box<Game>, Move),
+    Ongoing(Box<Game>, MoveData),
     Stopped(StoppedReason, Box<GameState>),
 }
 
@@ -230,7 +222,7 @@ mod tests {
         }
 
         let game = game_config_testing_white.parse::<Game>().unwrap();
-        let next_move = next_move_str.parse::<BasicMove>().unwrap();
+        let next_move = next_move_str.parse::<Move>().unwrap();
         let move_result = game.play(next_move);
         assert_eq!(is_insufficient_material(move_result), expected_is_insufficient_material);
     }

@@ -10,8 +10,8 @@ use serde::Serialize;
 use crate::base::MoveType::{Castling, EnPassant, Normal, PawnPromotion};
 
 
-#[derive(Debug, Copy, Clone, Serialize)]
-pub struct Move {
+#[derive(Debug, Clone, Serialize)]
+pub struct MoveData {
     pub main_move: FromTo,
     // figure_captured and is_pawn_move are not as useful as normally for a chess engine
     // but still nice to have for 3-fold repetition computation
@@ -20,37 +20,37 @@ pub struct Move {
     pub move_type: MoveType, // TODO: make this a Box<MoveType> or Rc<MoveType> together with a static lifetime instance of Rc/Box<MoveType::Normal>
 }
 
-impl Move {
+impl MoveData {
     pub fn new(
         main_move: FromTo,
         figure_caught: Option<FigureType>,
-    ) -> Move {
-        Move {
+    ) -> MoveData {
+        MoveData {
             main_move,
             figure_captured: figure_caught,
             is_pawn_move: false,
-            move_type: Normal
+            move_type: Normal.into()
         }
     }
 
-    pub fn new_en_passant(main_move: FromTo) -> Move {
-        Move {
+    pub fn new_en_passant(main_move: FromTo) -> MoveData {
+        MoveData {
             main_move,
             figure_captured: Some(FigureType::Pawn),
             is_pawn_move: true,
-            move_type: EnPassant,
+            move_type: EnPassant.into(),
         }
     }
 
-    pub fn new_castling(king_from: Position, rook_from: Position) -> Move {
+    pub fn new_castling(king_from: Position, rook_from: Position) -> MoveData {
         let king_to: Position = "".parse().unwrap();
         let rook_to: Position = "".parse().unwrap();
         let castling_type: CastlingType = CastlingType::KingSide;
-        Move {
+        MoveData {
             main_move: FromTo::new(king_from, king_to),
             figure_captured: None,
             is_pawn_move: false,
-            move_type: Castling(castling_type, FromTo::new(rook_from, rook_to)),
+            move_type: Castling(castling_type, FromTo::new(rook_from, rook_to)).into(),
         }
     }
 
@@ -123,40 +123,40 @@ impl Serialize for FromTo {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct BasicMove {
+pub struct Move {
     pub from_to: FromTo,
     pub promotion_type: Option<PromotionType>,
 }
 
-impl BasicMove {
-    pub fn new(from_to: FromTo) -> BasicMove {
-        BasicMove {
+impl Move {
+    pub fn new(from_to: FromTo) -> Move {
+        Move {
             from_to,
             promotion_type: None,
         }
     }
 
-    pub fn new_with_promotion(from_to: FromTo, promotion_type: PromotionType) -> BasicMove {
-        BasicMove {
+    pub fn new_with_promotion(from_to: FromTo, promotion_type: PromotionType) -> Move {
+        Move {
             from_to,
             promotion_type: Some(promotion_type),
         }
     }
 }
 
-impl str::FromStr for BasicMove {
+impl str::FromStr for Move {
     type Err = ChessError;
 
     fn from_str(code: &str) -> Result<Self, Self::Err> {
         match code.len() {
             4 => {
                 let from_to = code.parse::<FromTo>()?;
-                Ok(BasicMove::new(from_to))
+                Ok(Move::new(from_to))
             }
             5 => {
                 let from_to = code[0..4].parse::<FromTo>()?;
                 let pawn_move_type = code[4..5].parse::<PromotionType>()?;
-                Ok(BasicMove::new_with_promotion(from_to, pawn_move_type))
+                Ok(Move::new_with_promotion(from_to, pawn_move_type))
             }
             _ => {
                 return Err(ChessError {
@@ -168,7 +168,7 @@ impl str::FromStr for BasicMove {
     }
 }
 
-impl fmt::Display for BasicMove {
+impl fmt::Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.from_to)?;
         if let Some(promotion_type) = self.promotion_type {
@@ -178,16 +178,16 @@ impl fmt::Display for BasicMove {
     }
 }
 
-impl fmt::Debug for BasicMove {
+impl fmt::Debug for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
 // Default is needed, so that Move can be stored in a TinyVec
-impl Default for BasicMove {
+impl Default for Move {
     fn default() -> Self {
-        BasicMove::new(FromTo::new(
+        Move::new(FromTo::new(
             // default values should never be used, so illegal values are fine
             // (they are necessary for TinyVec)
             Position::new_unchecked(9, 9),
@@ -196,7 +196,7 @@ impl Default for BasicMove {
     }
 }
 
-impl Serialize for BasicMove {
+impl Serialize for Move {
     fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error> where
         S: serde::Serializer {
         serializer.serialize_str(&format!("{}", self))
@@ -207,11 +207,11 @@ pub const EXPECTED_MAX_NUMBER_OF_MOVES: usize = 80;
 
 #[derive(Clone)]
 pub struct MoveArray {
-    array: [BasicMove; EXPECTED_MAX_NUMBER_OF_MOVES]
+    array: [Move; EXPECTED_MAX_NUMBER_OF_MOVES]
 }
 
 impl tinyvec::Array for MoveArray {
-    type Item = BasicMove;
+    type Item = Move;
     const CAPACITY: usize = EXPECTED_MAX_NUMBER_OF_MOVES;
 
     fn as_slice(&self) -> &[Self::Item] {
@@ -224,7 +224,7 @@ impl tinyvec::Array for MoveArray {
 
     fn default() -> Self {
         MoveArray {
-            array: [BasicMove::default(); EXPECTED_MAX_NUMBER_OF_MOVES]
+            array: [Move::default(); EXPECTED_MAX_NUMBER_OF_MOVES]
         }
     }
 }

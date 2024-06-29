@@ -1,5 +1,5 @@
 use tinyvec::*;
-use crate::game::{StoppedReason, Move};
+use crate::game::{StoppedReason, MoveData};
 use crate::base::Color;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
@@ -70,7 +70,7 @@ impl BoardStates {
         }
     }
 
-    pub fn add_board_state_and_check_for_draw(&self, new_board_state: BoardState, turn_by: Color, a_move: Move) -> Result<BoardStates, StoppedReason> {
+    pub fn add_board_state_and_check_for_draw(&self, new_board_state: BoardState, turn_by: Color, a_move: MoveData) -> Result<BoardStates, StoppedReason> {
         let (
             new_white_board_states_history,
             new_black_board_states_history,
