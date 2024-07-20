@@ -3,7 +3,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "workspace/chess",
     "workspace/wasm",
 ]
 
