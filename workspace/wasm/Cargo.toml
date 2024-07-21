@@ -5,7 +5,7 @@ edition = "2021"
 
 description = "PoC of splitting Rust code to be compiled to wasm into workspaces"
 repository = "https://github.com/simon-void/wasm_from_rust_workspaces"
-#license = ""
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib"]

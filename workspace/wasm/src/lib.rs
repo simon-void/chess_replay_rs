@@ -1,6 +1,7 @@
 extern crate core;
 
 use std::convert::{Into};
+use chess_compress_urlsafe::base::a_move::{MoveType};
 use chess_compress_urlsafe::compression::decompress::decompress;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -44,21 +45,39 @@ struct Game {
 pub fn decode_moves(base64_encoded: &str) -> JsValue {
     // pub fn decompress(base64_encoded_match: &str) -> Result<(Vec<PositionData>, Vec<MoveData>), ChessError>
     let moves_result = match decompress(base64_encoded) {
-        Ok(moves) => {
-            // let move_stats_json = serde_json::to_string(&moves).unwrap();
-            JsonResult {
-                is_ok: true,
-                value: move_stats_json,
-            }
+        Ok((positions_data, moves_data)) => {
+            let vec_of_fen: Vec<String> = positions_data.into_iter().map(|it|it.fen).collect();
+            let vec_of_moves: Vec<String> = moves_data.into_iter().map(|it|{
+                format!(
+                    "{}{}",
+                    it.given_from_to,
+                    if let MoveType::PawnPromotion { promoted_to: promo_type } = it.move_type {
+                        promo_type.as_encoded().to_string()
+                    } else {
+                        "".to_string()
+                    }
+                )
+            }).collect();
+            serde_json::to_string(&Game { vec_of_fen, vec_of_moves }).map(|game_json|{
+                JsonResult {
+                    is_ok: true,
+                    value: game_json,
+                }
+            }).unwrap_or_else(|serde_err|{
+                JsonResult {
+                    is_ok: false,
+                    value: serde_err.to_string(),
+                }
+            })
         }
         Err(err) => {
             JsonResult {
                 is_ok: false,
-                value: err,
+                value: err.to_string(),
             }
         }
     };
-    let json = serde_json::to_string(&moves_result).unwrap();
+    let json = serde_json::to_string(&moves_result).unwrap_or_else(|_| "{\"is_ok\": false, \"value\": \"Serialization failed\"}".to_string());
     JsValue::from_str(json.as_str())
 }
 
