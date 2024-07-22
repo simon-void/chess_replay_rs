@@ -6,4 +6,4 @@ wasm-pack build --dev --target web
 
 echo ""
 echo "copying generated module from pkg to docs/src/logic ..."
-cp -f ./pkg/package.json ./pkg/chess_logic_wasm* ../../docs/src/chess_logic
+cp -f ./pkg/package.json ./pkg/decode_chess_wasm* ../../docs/src/decode_chess_wasm

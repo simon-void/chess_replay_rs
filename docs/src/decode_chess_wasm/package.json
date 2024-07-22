@@ -1,0 +1,21 @@
+{
+  "name": "decode_chess_wasm",
+  "type": "module",
+  "description": "wasm wrapper around chess_compress_urlsafe crate",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/simon-void/chess_replay_rs"
+  },
+  "files": [
+    "decode_chess_wasm_bg.wasm",
+    "decode_chess_wasm.js",
+    "decode_chess_wasm.d.ts"
+  ],
+  "main": "decode_chess_wasm.js",
+  "types": "decode_chess_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

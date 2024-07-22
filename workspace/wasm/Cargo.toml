@@ -1,10 +1,10 @@
 [package]
-name = "chess_logic_wasm"
+name = "decode_chess_wasm"
 version = "0.1.0"
 edition = "2021"
 
-description = "PoC of splitting Rust code to be compiled to wasm into workspaces"
-repository = "https://github.com/simon-void/wasm_from_rust_workspaces"
+description = "wasm wrapper around chess_compress_urlsafe crate"
+repository = "https://github.com/simon-void/chess_replay_rs"
 license = "MIT"
 
 [lib]
