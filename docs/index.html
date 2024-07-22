@@ -2,7 +2,7 @@
 <html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="UTF-8">
-    <title>VoidchessWeb</title>
+    <title>Chess Replay</title>
     <meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1.0"/>
     <link rel="stylesheet" href="./styles/page.css"/>
     <link rel="stylesheet" href="./styles/cm-chessboard.css"/>
@@ -23,7 +23,11 @@
         <div>evaluation: <span data-bind="text: evaluation"></span></div>
         <div id="output"></div>
         <br>
-        <button onclick="location.reload()">Restart</button>
+        <!--<button onclick="location.reload()">Restart</button>-->
+        <button id="to_start_button">to start</button>
+        <button id="backward_button">backwards</button>
+        <button id="forward_button">forward</button>
+        <button id="to_end_button">to end</button>
     </div>
 
     <br>
