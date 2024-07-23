@@ -41,6 +41,14 @@ function log(text) {
 }
 
 window.onload = function () {
+    // The site displays a warning if WebAssembly isn't available in the user's browser.
+    // But if this point is reached, WebAssembly is present and the warning can be disabled and the main content enabled.
+    let noWasmWarning = document.getElementById("no-wasm-warning");
+    let pageLoadingSpinner = document.getElementById("page-loading");
+    let mainDiv = document.getElementById("main");
+    //
+    //     .style = "display: none";
+    //     .style = "display: block";
 
     init_wasm().then(_ => {
         // gameModel.state(states.HUMAN_TURN);
@@ -48,25 +56,23 @@ window.onload = function () {
         // "TuCU2BS-tDL8_EA" -> "d2d3, g7g6, c1e3, f8g7, b1c3, g8f6, d1d2, e8h8, e1a1"
         let compressed_game = "TuCU2BS-tDL8_EA";
         decompress(compressed_game).then(gameData => {
+            pageLoadingSpinner.style = "display: none";
+            mainDiv.style = "display: block";
+
             let gameModel = new GameState(gameData);
             ko.applyBindings(gameModel);
         });
 
         log("match in compressed notation: "+compressed_game);
     }, reason => {
-        alert("Couldn't initialise wasm: " + reason);
+        pageLoadingSpinner.style = "display: none";
+        noWasmWarning.style = "display: block; background-color: lightpink";
+        noWasmWarning.innerText += (" Reason: "+reason);
     });
 }
 
 function UiModel(gameState) {
     let self = this;
-
-    {
-        // The site displays a warning if WebAssembly isn't available in the user's browser.
-        // But if this point is reached, WebAssembly is present and the warning can be disabled and the main content enabled.
-        document.getElementById("no-wasm-warning").style = "display: none";
-        document.getElementById("main").style = "display: block";
-    }
 
     self.board = new Chessboard(
         document.getElementById("board"),
