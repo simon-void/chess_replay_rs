@@ -77,6 +77,12 @@ function UiModel(gameState) {
         // log("new fen: "+ fen)
         self.board.setPosition(fen);
     }
+    self.setProgress = function (fen) {
+        let progressDiv = document.getElementById("progress");
+        return function (msg) {
+            progressDiv.innerText = msg;
+        };
+    }();
 
     document.getElementById("to_start_button").onclick = function() {gameState.startPosition();};
     document.getElementById("previous_button").onclick = function() {gameState.previousPosition();};
@@ -110,9 +116,13 @@ function GameState(gameData) {
     // this.fullName = ko.computed(function() {
     //     return this.firstName() + " " + this.lastName();
     // }, this);
+
     let uiModel = new UiModel(self);
     uiModel.setPosition(gameData.positions[0]);
+    const nrOfMoves = gameData.moves.length;
+    uiModel.setProgress("moves played: 0/"+nrOfMoves);
     self._positionIndex.subscribe(function(newIndex) {
         uiModel.setPosition(gameData.positions[newIndex]);
+        uiModel.setProgress("moves played: "+newIndex+"/"+nrOfMoves);
     });
 }
