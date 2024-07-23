@@ -52,7 +52,7 @@ window.onload = function () {
             ko.applyBindings(gameModel);
         });
 
-        log("decompressed game: "+compressed_game);
+        log("match in compressed notation: "+compressed_game);
     }, reason => {
         alert("Couldn't initialise wasm: " + reason);
     });
