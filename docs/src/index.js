@@ -60,6 +60,14 @@ window.onload = function () {
 
 function UiModel(gameState) {
     let self = this;
+
+    {
+        // The site displays a warning if WebAssembly isn't available in the user's browser.
+        // But if this point is reached, WebAssembly is present and the warning can be disabled and the main content enabled.
+        document.getElementById("no-wasm-warning").style = "display: none";
+        document.getElementById("main").style = "display: block";
+    }
+
     self.board = new Chessboard(
         document.getElementById("board"),
         {
