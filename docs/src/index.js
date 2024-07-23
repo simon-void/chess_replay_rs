@@ -10,19 +10,26 @@ async function init_wasm() {
 
 async function decompress(urlsafe_game_notation) {
     await init_wasm()
+    let gameData = GameData();
     let json_result_serialized = await wasm.decode_moves(urlsafe_game_notation);
     let json_result = JSON.parse(json_result_serialized);
     if (json_result.is_ok) {
         // log("Decompression result:" + json_result.value)
         let game = JSON.parse(json_result.value);
-
-        log("vec_of_fen length: "+ game.vec_of_fen.length)
-        log("vec_of_moves length: "+ game.vec_of_moves.length)
-        log("moves: "+game.vec_of_moves)
+        gameData.moves = game.vec_of_moves;
+        gameData.positions = game.vec_of_fen;
     } else {
         log("Decompression error:" + json_result.value)
     }
-    // return JSON.parse(fen_and_move_vecs);
+    return gameData;
+}
+
+function GameData() {
+    let self = {
+        moves: [],
+        positions: ["rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"],  // classic starting position
+    };
+    return self;
 }
 
 const output = document.getElementById("output")
@@ -34,40 +41,24 @@ function log(text) {
 }
 
 window.onload = function () {
-    let gameModel = new GameModel();
-    ko.applyBindings(gameModel);
 
     init_wasm().then(_ => {
         // gameModel.state(states.HUMAN_TURN);
         // "Y3vghpnyfWW7Q" -> "a2a4, h7h6, a4a5, b7b5, a5b6, h6h5, b6c7, h5h4, g2g3, h4g3, c7d8Q"
         // "TuCU2BS-tDL8_EA" -> "d2d3, g7g6, c1e3, f8g7, b1c3, g8f6, d1d2, e8h8, e1a1"
-        decompress("Y3vghpnyfWW7Q")
+        let compressed_game = "TuCU2BS-tDL8_EA";
+        decompress(compressed_game).then(gameData => {
+            let gameModel = new GameState(gameData);
+            ko.applyBindings(gameModel);
+        });
 
-        alert("decompressed");
+        log("decompressed game: "+compressed_game);
     }, reason => {
         alert("Couldn't initialise wasm: " + reason);
     });
 }
 
-const states = {
-    LOADING: "loading",
-    REPLAY: "replay",
-    GAME_ENDED: "game ended",
-};
-const moveTypes = {
-    NORMAL: "normal",
-    PAWN_PROMOTION: "pawn_promo",
-    EN_PASSANT: "en_passant",
-    SHORT_CASTLING: "short_castling",
-    LONG_CASTLING: "long_castling",
-};
-const gameEvalTypes = {
-    GAME_ENDED: "GameEnded",
-    MOVE_TO_PLAY: "MoveToPlay",
-    ERROR: "Err",
-};
-
-function BoardModel(gameModel) {
+function UiModel(gameState) {
     let self = this;
     self.board = new Chessboard(
         document.getElementById("board"),
@@ -82,96 +73,46 @@ function BoardModel(gameModel) {
             }
         }
     );
-    self.board.enableMoveInput(event => {
-        log("enableMoveInput invoked")
-        // switch (event.type) {
-        //     case INPUT_EVENT_TYPE.moveStart:
-        //         return gameModel.allowedMoveMap().has(event.square);
-        //     case INPUT_EVENT_TYPE.moveDone:
-        //         let moveOrNull = gameModel.allowedMoveMap().get(event.squareFrom).find(move=>move.to===event.squareTo);
-        //         let move_accepted = moveOrNull != null;
-        //         if(move_accepted) {
-        //             setTimeout(()=>{
-        //                 self.takeCareOfSpecialMoves(moveOrNull);
-        //                 gameModel.informOfMove(moveOrNull)
-        //             },0);
-        //         }
-        //         return move_accepted;
-        //     case INPUT_EVENT_TYPE.moveCanceled:
-        //         //log(`moveCanceled`)
-        // }
-    });
-    self.takeCareOfSpecialMoves = function (move) {
-        log("takeCareOfSpecialMoves invoked")
-    //     if(move.type!==moveTypes.NORMAL) {
-    //         let moves_plus_ongoing_move = [...gameModel.moveStrPlayed(), move.asStr];
-    //         getFenResult(moves_plus_ongoing_move).then(fenResult => {
-    //                 if (fenResult.is_ok) {
-    //                     let fen = fenResult.value;
-    //                     self.board.setPosition(fen);
-    //                 } else {
-    //                     log(fenResult.value);
-    //                 }
-    //             }, reason => {
-    //                 log(`error when invoking getFenResult: ${reason}`);
-    //             }
-    //         )
-    //     }
+    self.setPosition = function (fen) {
+        // log("new fen: "+ fen)
+        self.board.setPosition(fen);
     }
+
+    document.getElementById("to_start_button").onclick = function() {gameState.startPosition();};
+    document.getElementById("previous_button").onclick = function() {gameState.previousPosition();};
+    document.getElementById("next_button").onclick = function() {gameState.nextPosition();};
+    document.getElementById("to_end_button").onclick = function() {gameState.endPosition();};
+
+    return self;
 }
 
-function GameModel() {
+function GameState(gameData) {
     let self = this;
-    self.evaluation = ko.observable("no evaluation");
-    self.state = ko.observable(states.LOADING)
-    // self.allowedMoveStrArray = ko.observableArray(_allowedMoveStrArrayClassic);
-    // self.allowedMoveMap = ko.computed(()=>{
-    //     return arrayOfMovesToMoveMap(self.allowedMoveStrArray());
-    // });
-    self.moveStrPlayed = ko.observableArray([]);
+    self._positionIndex = ko.observable(0);
+    self.startPosition = function () {
+        self._positionIndex(0);
+    };
+    self.endPosition = function () {
+        self._positionIndex(gameData.moves.length);
+    };
+    self.nextPosition = function () {
+        let nextIndex = self._positionIndex() + 1;
+        if(nextIndex<gameData.positions.length) {
+            self._positionIndex(nextIndex);
+        }
+    };
+    self.previousPosition = function () {
+        let nextIndex = self._positionIndex() - 1;
+        if(nextIndex>=0) {
+            self._positionIndex(nextIndex);
+        }
+    };
     // this.fullName = ko.computed(function() {
     //     return this.firstName() + " " + this.lastName();
     // }, this);
-    self.boardModel = new BoardModel(self);
-    // self.informOfMove = function (move) {
-    //     let possibleMoves = [...self.allowedMoveStrArray()];
-    //     self.allowedMoveStrArray([]);
-    //     self.moveStrPlayed.push(move.asStr);
-    //     self.state(states.ENGINE_TURN);
-    //
-    //     evaluateGame(
-    //         [...self.moveStrPlayed()],
-    //         possibleMoves,
-    //         self.evaluation,
-    //     ).then(
-    //         (gameEval) => {
-    //             if (gameEval.result_type === gameEvalTypes.ERROR) {
-    //                 log(gameEval.msg);
-    //             }
-    //             if (gameEval.result_type === gameEvalTypes.GAME_ENDED) {
-    //                 self.evaluation(gameEval.msg);
-    //                 self.state(states.GAME_ENDED);
-    //             }
-    //             if (gameEval.result_type === gameEvalTypes.MOVE_TO_PLAY) {
-    //                 self.moveStrPlayed.push(gameEval.move_to_play);
-    //                 self.evaluation(gameEval.eval);
-    //                 let fen = gameEval.fen;
-    //                 self.boardModel.board.setPosition(fen);
-    //
-    //                 getAllowedMovesAsArray(self.moveStrPlayed()).then(
-    //                     newAllowedMovesArray => {
-    //                         if (newAllowedMovesArray.length === 0) {
-    //                             log("no moves left")
-    //                         }
-    //                         self.allowedMoveStrArray(newAllowedMovesArray);
-    //                     }, reason => {
-    //                         alert(`couldn't compute allowed moves because of ${reason}`)
-    //                     }
-    //                 )
-    //
-    //                 self.state(states.HUMAN_TURN);
-    //             }
-    //         }
-    //     );
-    // };
+    let uiModel = new UiModel(self);
+    uiModel.setPosition(gameData.positions[0]);
+    self._positionIndex.subscribe(function(newIndex) {
+        uiModel.setPosition(gameData.positions[newIndex]);
+    });
 }
