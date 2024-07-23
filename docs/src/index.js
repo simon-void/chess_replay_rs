@@ -46,9 +46,6 @@ window.onload = function () {
     let noWasmWarning = document.getElementById("no-wasm-warning");
     let pageLoadingSpinner = document.getElementById("page-loading");
     let mainDiv = document.getElementById("main");
-    //
-    //     .style = "display: none";
-    //     .style = "display: block";
 
     init_wasm().then(_ => {
         // gameModel.state(states.HUMAN_TURN);
