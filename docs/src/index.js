@@ -53,7 +53,7 @@ window.onload = function () {
         // "TuCU2BS-tDL8_EA" -> "d2d3, g7g6, c1e3, f8g7, b1c3, g8f6, d1d2, e8h8, e1a1"
         let compressed_game = "TuCU2BS-tDL8_EA";
         decompress(compressed_game).then(gameData => {
-            pageLoadingSpinner.style = "display: none";
+            pageLoadingSpinner.remove();
             mainDiv.style = "display: block";
 
             let gameModel = new GameState(gameData);
@@ -62,7 +62,7 @@ window.onload = function () {
 
         log("match in compressed notation: "+compressed_game);
     }, reason => {
-        pageLoadingSpinner.style = "display: none";
+        pageLoadingSpinner.remove();
         noWasmWarning.style = "display: block; background-color: lightpink";
         noWasmWarning.innerText += (" Reason: "+reason);
     });
