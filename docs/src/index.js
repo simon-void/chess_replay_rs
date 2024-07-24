@@ -18,14 +18,13 @@ window.onload = function () {
     const queryParams = new Proxy(new URLSearchParams(window.location.search), {
         get: (searchParams, prop) => searchParams.get(prop),
     });
-    // "Y3vghpnyfWW7Q" -> "a2a4, h7h6, a4a5, b7b5, a5b6, h6h5, b6c7, h5h4, g2g3, h4g3, c7d8Q"
-    // "TuCU2BS-tDL8_EA" -> "d2d3, g7g6, c1e3, f8g7, b1c3, g8f6, d1d2, e8h8, e1a1"
-    const defaultMatch = "TuCU2BS-tDL8_EA";
+
+    const defaultMatch = "TuCU2BS-tDL8_EA3nvfeW2P9GR"; // d2d3, g7g6, c1e3, f8g7, b1c3, g8f6, d1d2, e8h8, e1a1, h7h5, e3h6, h5h4, g2g4, h4g3, h6g7, g3h2, g7f8, h2g1R
     const queryMatch = queryParams.moves;
     const effectiveMatch = queryMatch ? queryMatch : defaultMatch;
 
-    if(effectiveMatch===defaultMatch) {
-        log("no query parameter 'moves' found. using default match: "+defaultMatch);
+    if (!queryMatch) {
+        log("no query parameter 'moves' found. using default moves=" + defaultMatch);
     }
 
     init_wasm().then(_ => {
@@ -39,7 +38,7 @@ window.onload = function () {
     }, reason => {
         pageLoadingSpinner.remove();
         noWasmWarning.style = "display: block; background-color: lightpink";
-        console.log("init_wasm failed with: "+reason);
+        console.log("init_wasm failed with: " + reason);
     });
 }
 
@@ -120,13 +119,13 @@ function GameState(gameData) {
     };
     self.nextPosition = function () {
         let nextIndex = self._positionIndex() + 1;
-        if(nextIndex<gameData.positions.length) {
+        if (nextIndex < gameData.positions.length) {
             self._positionIndex(nextIndex);
         }
     };
     self.previousPosition = function () {
         let nextIndex = self._positionIndex() - 1;
-        if(nextIndex>=0) {
+        if (nextIndex >= 0) {
             self._positionIndex(nextIndex);
         }
     };
@@ -137,9 +136,9 @@ function GameState(gameData) {
     let uiModel = new UiModel(self);
     uiModel.setPosition(gameData.positions[0]);
     const nrOfMoves = gameData.moves.length;
-    uiModel.setProgress("moves played: 0/"+nrOfMoves);
-    self._positionIndex.subscribe(function(newIndex) {
+    uiModel.setProgress("moves played: 0/" + nrOfMoves);
+    self._positionIndex.subscribe(function (newIndex) {
         uiModel.setPosition(gameData.positions[newIndex]);
-        uiModel.setProgress("moves played: "+newIndex+"/"+nrOfMoves);
+        uiModel.setProgress("moves played: " + newIndex + "/" + nrOfMoves);
     });
 }
