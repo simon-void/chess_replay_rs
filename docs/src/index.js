@@ -64,7 +64,7 @@ window.onload = function () {
     }, reason => {
         pageLoadingSpinner.remove();
         noWasmWarning.style = "display: block; background-color: lightpink";
-        noWasmWarning.innerText += (" Reason: "+reason);
+        console.log("init_wasm failed with: "+reason);
     });
 }
 
