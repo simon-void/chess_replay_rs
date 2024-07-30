@@ -36,7 +36,8 @@ div.board {
 
 #moves_box {
   margin-top: 16px;
+  padding: 5px;
   background-color: #cde;
   min-height: 200px;
-  width: 450px;
+  width: 400px;
 }
