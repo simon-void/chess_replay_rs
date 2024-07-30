@@ -31,8 +31,8 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chess_compress_urlsafe"
-version = "0.0.1"
-source = "git+https://github.com/simon-void/chess_compress_urlsafe#0f305c8985cc427a7d4a340b9b308f9390d289fc"
+version = "0.0.2"
+source = "git+https://github.com/simon-void/chess_compress_urlsafe?tag=0.0.2#cd31cfcc752bb7f126d90674a61b2ee7674ae98c"
 
 [[package]]
 name = "console_error_panic_hook"
@@ -46,7 +46,7 @@ dependencies = [
 
 [[package]]
 name = "decode_chess_wasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chess_compress_urlsafe",
  "console_error_panic_hook",

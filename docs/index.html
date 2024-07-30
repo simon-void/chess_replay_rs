@@ -20,26 +20,33 @@
         Please update your browser to be able to use this website.
     </div>
 
-    <div id="main" style="display: none">
-        <div class="board" id="board"></div>
-        <!--button style="margin-bottom: 10px"
-                onclick="window.board.setOrientation(window.board.getOrientation() === 'w' ? 'b' : 'w')">Switch Orientation
-        </button-->
+    <div style="width: 450px">
 
-        <button id="to_start_button">start</button>
-        <button id="previous_button">previous</button>
-        <button id="next_button">next</button>
-        <button id="to_end_button">end</button>
-        <br>
-        <div id="progress"></div>
+        <div id="main" style="display: none">
+            <div class="board" id="board"></div>
+        </div>
+
+        <div>
+            <button id="to_start_button">start</button>
+            <button id="previous_button">previous</button>
+            <button id="next_button">next</button>
+            <button id="to_end_button">end</button>
+            <!--button style="margin-bottom: 10px"
+                    onclick="window.board.setOrientation(window.board.getOrientation() === 'w' ? 'b' : 'w')">Switch Orientation
+            </button-->
+        </div>
+
+        <div id="moves_box" data-bind="foreach: moves">
+            <span data-bind="text: aMove"></span>
+        </div>
         <br>
         <div id="output"></div>
     </div>
 
-    <div>
-        The sources for this chess viewer can be found <a href="https://github.com/simon-void/chess_replay_rs">here</a>.
-        The frontend comes from an <a href="https://github.com/shaack/cm-chessboard">open-source project</a>.
-    </div>
+<!--    <div>-->
+<!--        The sources for this chess viewer can be found <a href="https://github.com/simon-void/chess_replay_rs">here</a>.-->
+<!--        The frontend comes from an <a href="https://github.com/shaack/cm-chessboard">open-source project</a>.-->
+<!--    </div>-->
 
     <script type="module" src="src/index.js"></script>
 </body>

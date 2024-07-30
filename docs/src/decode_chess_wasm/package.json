@@ -2,7 +2,7 @@
   "name": "decode_chess_wasm",
   "type": "module",
   "description": "wasm wrapper around chess_compress_urlsafe crate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "repository": {
     "type": "git",

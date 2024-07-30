@@ -1,8 +1,11 @@
 extern crate core;
 
 use std::convert::{Into};
-use chess_compress_urlsafe::base::a_move::{MoveType};
-use chess_compress_urlsafe::compression::decompress::decompress;
+use CastlingType::{KingSide, QueenSide};
+use chess_compress_urlsafe::a_move::{CastlingType, MoveData, MoveType};
+use chess_compress_urlsafe::a_move::MoveType::PawnPromotion;
+use chess_compress_urlsafe::decompress::decompress;
+use chess_compress_urlsafe::FigureType;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
@@ -43,21 +46,11 @@ struct Game {
 
 #[wasm_bindgen]
 pub fn decode_moves(base64_encoded: &str) -> JsValue {
-    // pub fn decompress(base64_encoded_match: &str) -> Result<(Vec<PositionData>, Vec<MoveData>), ChessError>
     let moves_result = match decompress(base64_encoded) {
         Ok((positions_data, moves_data)) => {
             let vec_of_fen: Vec<String> = positions_data.into_iter().map(|it|it.fen).collect();
-            let vec_of_moves: Vec<String> = moves_data.into_iter().map(|it|{
-                format!(
-                    "{}{}",
-                    it.given_from_to,
-                    if let MoveType::PawnPromotion { promoted_to: promo_type } = it.move_type {
-                        promo_type.as_encoded().to_string()
-                    } else {
-                        "".to_string()
-                    }
-                )
-            }).collect();
+            let vec_of_moves: Vec<String> = moves_data.into_iter().map(|it| { to_move_notation(it) }).collect();
+
             serde_json::to_string(&Game { vec_of_fen, vec_of_moves }).map(|game_json|{
                 JsonResult {
                     is_ok: true,
@@ -79,6 +72,34 @@ pub fn decode_moves(base64_encoded: &str) -> JsValue {
     };
     let json = serde_json::to_string(&moves_result).unwrap_or_else(|_| "{\"is_ok\": false, \"value\": \"Serialization failed\"}".to_string());
     JsValue::from_str(json.as_str())
+}
+
+fn to_move_notation(move_data: MoveData) -> String {
+    if let MoveType::Castling {castling_type, .. } = move_data.move_type {
+        return match castling_type {
+            KingSide => "O-O",
+            QueenSide => "O-O-O",
+        }.to_string();
+    };
+
+    let mut move_str = String::with_capacity(6);
+    if move_data.figure_moved != FigureType::Pawn {
+        move_str.push(move_data.figure_moved.as_encoded());
+    };
+
+    let from_to = move_data.given_from_to;
+    if move_data.did_catch_figure() {
+        move_str.push_str(format!("{}x{}", from_to.from, from_to.to).as_str());
+    } else {
+        move_str.push_str(from_to.to_string().as_str());
+    }
+
+    if let PawnPromotion{promoted_to} = move_data.move_type {
+        move_str.push('=');
+        move_str.push(promoted_to.as_encoded());
+    };
+
+    move_str
 }
 
 //------------------------------Tests------------------------

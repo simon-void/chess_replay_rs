@@ -93,12 +93,6 @@ function UiModel(gameState) {
         // log("new fen: "+ fen)
         self.board.setPosition(fen);
     }
-    self.setProgress = function () {
-        let progressDiv = document.getElementById("progress");
-        return function (msg) {
-            progressDiv.innerText = msg;
-        };
-    }();
 
     document.getElementById("to_start_button").onclick = function() {gameState.startPosition();};
     document.getElementById("previous_button").onclick = function() {gameState.previousPosition();};
@@ -129,16 +123,27 @@ function GameState(gameData) {
             self._positionIndex(nextIndex);
         }
     };
-    // this.fullName = ko.computed(function() {
-    //     return this.firstName() + " " + this.lastName();
-    // }, this);
+    self.moves = ko.computed(function () {
+        let nrOfHalfMoves = this._positionIndex();
+        let nrOfRounds = Math.floor((nrOfHalfMoves + 1) / 2);
+        let movesArray = [];
+        for (let roundIndex = 0; roundIndex < nrOfRounds; roundIndex++) {
+            let whiteMove = gameData.moves[roundIndex * 2];
+            let blackMove = "";
+            let blackMoveIndex = (roundIndex * 2) + 1;
+            if (blackMoveIndex < nrOfHalfMoves) {
+                blackMove += " " + gameData.moves[blackMoveIndex]
+            }
+            movesArray.push({
+                aMove: (roundIndex + 1) + "." + whiteMove + blackMove,
+            });
+        }
+        return movesArray;
+    }, this);
 
     let uiModel = new UiModel(self);
     uiModel.setPosition(gameData.positions[0]);
-    const nrOfMoves = gameData.moves.length;
-    uiModel.setProgress("moves played: 0/" + nrOfMoves);
     self._positionIndex.subscribe(function (newIndex) {
         uiModel.setPosition(gameData.positions[newIndex]);
-        uiModel.setProgress("moves played: " + newIndex + "/" + nrOfMoves);
     });
 }

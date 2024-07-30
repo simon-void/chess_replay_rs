@@ -9,13 +9,6 @@ body {
   body * {
     font-size: 17px; }
 
-a {
-  color: #068cdf; }
-  a:visited {
-    color: #333; }
-  a:hover {
-    color: #056dad; }
-
 h1, h1 a {
   margin-top: 0;
   font-size: 34px; }
@@ -26,13 +19,6 @@ h1 {
 h2 {
   margin-bottom: 15px;
   font-size: 23.8px; }
-
-pre {
-  font-family: "courier new", monospace;
-  background-color: #555;
-  color: #eee;
-  padding: 5px;
-  overflow: auto; }
 
 div.board {
   float: left;
@@ -47,3 +33,10 @@ div.board {
   content: "";
   clear: both;
   display: table; }
+
+#moves_box {
+  margin-top: 16px;
+  background-color: #cde;
+  min-height: 200px;
+  width: 450px;
+}
