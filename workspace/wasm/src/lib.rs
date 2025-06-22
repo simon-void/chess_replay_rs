@@ -95,7 +95,7 @@ fn to_move_notation(move_data: MoveData) -> String {
         }.to_string();
     };
 
-    let mut move_notation = String::with_capacity(6);
+    let mut move_notation = String::with_capacity(5);
     append_figure_icon_to(&mut move_notation, &move_data.figure_moved);
 
     let from_to = move_data.given_from_to;
@@ -116,9 +116,12 @@ fn to_move_notation(move_data: MoveData) -> String {
     }
     move_notation.push_str(from_to.to.to_string().as_str());
 
-    if let PawnPromotion{promoted_to} = move_data.move_type {
+    if let PawnPromotion { promoted_to } = move_data.move_type {
         append_promotion_icon_to(&mut move_notation, &promoted_to);
     };
+    if move_data.is_check {
+        move_notation.push('+');
+    }
 
     move_notation
 }
