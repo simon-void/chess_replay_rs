@@ -31,8 +31,8 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chess_compress_urlsafe"
-version = "1.1.0"
-source = "git+https://github.com/simon-void/chess_compress_urlsafe?tag=1.1.0#8b165119f33d96d43c3f34b28860e8fa784e69c3"
+version = "1.1.1"
+source = "git+https://github.com/simon-void/chess_compress_urlsafe?tag=1.1.1#6f098c6dcb900569d15d1194c3c44c27f91679c2"
 
 [[package]]
 name = "console_error_panic_hook"
