@@ -2,10 +2,11 @@ extern crate core;
 
 use std::convert::{Into};
 use CastlingType::{KingSide, QueenSide};
-use chess_compress_urlsafe::a_move::{CastlingType, MoveData, MoveType};
+use chess_compress_urlsafe::a_move::{CastlingType, MoveData, MoveType, PromotionType};
 use chess_compress_urlsafe::a_move::MoveType::PawnPromotion;
 use chess_compress_urlsafe::decompress::decompress;
-use chess_compress_urlsafe::FigureType;
+use chess_compress_urlsafe::{FigureType, OriginStatus};
+use OriginStatus::{ColumnAndRowAreAmbiguous, ColumnIsAmbiguous, RowIsAmbiguous, Unambiguous};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
@@ -14,7 +15,7 @@ use web_sys::console;
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
     // This provides better error messages in debug mode.
-    // It's disabled in release mode so it doesn't bloat up the file size.
+    // It's disabled in release mode, so it doesn't bloat up the file size.
     #[cfg(debug_assertions)]
         console_error_panic_hook::set_once();
 
@@ -48,20 +49,31 @@ struct Game {
 pub fn decode_moves(base64_encoded: &str) -> JsValue {
     let moves_result = match decompress(base64_encoded) {
         Ok((positions_data, moves_data)) => {
-            let vec_of_fen: Vec<String> = positions_data.into_iter().map(|it|it.fen).collect();
-            let vec_of_moves: Vec<String> = moves_data.into_iter().map(|it| { to_move_notation(it) }).collect();
-
-            serde_json::to_string(&Game { vec_of_fen, vec_of_moves }).map(|game_json|{
-                JsonResult {
-                    is_ok: true,
-                    value: game_json,
-                }
-            }).unwrap_or_else(|serde_err|{
+            // first, make sure that there's always one more element in moves_data compared to positions_data. return a JsonResult instead.
+            if moves_data.len() + 1 == positions_data.len() {
+                let vec_of_fen: Vec<String> = positions_data.into_iter().map(|it|it.fen).collect();
+                let vec_of_moves: Vec<String> = moves_data.into_iter().map(|it| { to_move_notation(it) }).collect();
+                
+                
+                serde_json::to_string(&Game { vec_of_fen, vec_of_moves }).map(|game_json|{
+                    JsonResult {
+                        is_ok: true,
+                        value: game_json,
+                    }
+                }).unwrap_or_else(|serde_err|{
+                    JsonResult {
+                        is_ok: false,
+                        value: serde_err.to_string(),
+                    }
+                })
+                
+            } else {
                 JsonResult {
                     is_ok: false,
-                    value: serde_err.to_string(),
+                    value: format!("The number of moves ({}) + 1 does not match the number of positions ({})", moves_data.len(), positions_data.len()),
                 }
-            })
+            }
+            
         }
         Err(err) => {
             JsonResult {
@@ -82,24 +94,49 @@ fn to_move_notation(move_data: MoveData) -> String {
         }.to_string();
     };
 
-    let mut move_str = String::with_capacity(6);
-    if move_data.figure_moved != FigureType::Pawn {
-        move_str.push(move_data.figure_moved.as_encoded());
-    };
+    let mut move_notation = String::with_capacity(6);
+    append_figure_icon_to(&mut move_notation, &move_data.figure_moved);
 
     let from_to = move_data.given_from_to;
-    if move_data.did_catch_figure() {
-        move_str.push_str(format!("{}x{}", from_to.from, from_to.to).as_str());
-    } else {
-        move_str.push_str(from_to.to_string().as_str());
+
+    match move_data.origin_status {
+        Unambiguous => { /*do nothing*/ }
+        ColumnIsAmbiguous => { move_notation.push(from_to.from.column_char()); }
+        RowIsAmbiguous => { move_notation.push(from_to.from.row_char()); }
+        ColumnAndRowAreAmbiguous => { move_notation.push_str(from_to.from.to_string().as_str()); }
     }
 
+    if move_data.did_catch_figure() {
+        move_notation.push('x');
+    }
+    move_notation.push_str(from_to.to.to_string().as_str());
+
     if let PawnPromotion{promoted_to} = move_data.move_type {
-        move_str.push('=');
-        move_str.push(promoted_to.as_encoded());
+        append_promotion_icon_to(&mut move_notation, &promoted_to);
     };
 
-    move_str
+    move_notation
+}
+
+fn append_figure_icon_to(move_notation: &mut String, figure_type: &FigureType) {
+    match figure_type {
+        FigureType::Pawn => {} //move_notation.push('♙'),
+        FigureType::Rook => move_notation.push('♖'),
+        FigureType::Knight => move_notation.push('♘'),
+        FigureType::Bishop => move_notation.push('♗'),
+        FigureType::Queen => move_notation.push('♕'),
+        FigureType::King => move_notation.push('♔'),
+    }
+}
+
+fn append_promotion_icon_to(move_notation: &mut String, figure_type: &PromotionType) {
+    move_notation.push('=');
+    match figure_type {
+        PromotionType::Queen => move_notation.push('♕'),
+        PromotionType::Rook => move_notation.push('♖'),
+        PromotionType::Bishop => move_notation.push('♗'),
+        PromotionType::Knight => move_notation.push('♘'),
+    }
 }
 
 //------------------------------Tests------------------------

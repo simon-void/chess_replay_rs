@@ -11,10 +11,9 @@ export interface InitOutput {
   readonly main_js: () => void;
   readonly get_greeting_for: (a: number, b: number) => any;
   readonly decode_moves: (a: number, b: number) => any;
-  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_0: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-  readonly __wbindgen_export_3: WebAssembly.Table;
   readonly __wbindgen_start: () => void;
 }
 
