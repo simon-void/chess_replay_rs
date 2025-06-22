@@ -6,6 +6,7 @@ use chess_compress_urlsafe::a_move::{CastlingType, MoveData, MoveType, Promotion
 use chess_compress_urlsafe::a_move::MoveType::PawnPromotion;
 use chess_compress_urlsafe::decompress::decompress;
 use chess_compress_urlsafe::{FigureType, OriginStatus};
+use FigureType::{Bishop, King, Knight, Pawn, Queen, Rook};
 use OriginStatus::{ColumnAndRowAreAmbiguous, ColumnIsAmbiguous, RowIsAmbiguous, Unambiguous};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -100,7 +101,11 @@ fn to_move_notation(move_data: MoveData) -> String {
     let from_to = move_data.given_from_to;
 
     match move_data.origin_status {
-        Unambiguous => { /*do nothing*/ }
+        Unambiguous => {
+            if move_data.is_pawn_move() && move_data.did_catch_figure() {
+                move_notation.push(from_to.from.column_char());
+            }
+        }
         ColumnIsAmbiguous => { move_notation.push(from_to.from.column_char()); }
         RowIsAmbiguous => { move_notation.push(from_to.from.row_char()); }
         ColumnAndRowAreAmbiguous => { move_notation.push_str(from_to.from.to_string().as_str()); }
@@ -120,12 +125,12 @@ fn to_move_notation(move_data: MoveData) -> String {
 
 fn append_figure_icon_to(move_notation: &mut String, figure_type: &FigureType) {
     match figure_type {
-        FigureType::Pawn => {} //move_notation.push('♙'),
-        FigureType::Rook => move_notation.push('♖'),
-        FigureType::Knight => move_notation.push('♘'),
-        FigureType::Bishop => move_notation.push('♗'),
-        FigureType::Queen => move_notation.push('♕'),
-        FigureType::King => move_notation.push('♔'),
+        Pawn => {} //move_notation.push('♙'),
+        Rook => move_notation.push('♖'),
+        Knight => move_notation.push('♘'),
+        Bishop => move_notation.push('♗'),
+        Queen => move_notation.push('♕'),
+        King => move_notation.push('♔'),
     }
 }
 
